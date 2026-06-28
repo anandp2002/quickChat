@@ -14,7 +14,7 @@ export function PublicRoute() {
   const { user, loading } = useSelector((state) => state.auth);
 
   if (loading) return <Spinner />;
-  if (user) return <Navigate to={routePaths.chat} replace />;
+  if (user) return <Navigate to={routePaths.home} replace />;
 
   return <Outlet />;
 }

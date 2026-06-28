@@ -10,5 +10,5 @@ export const routePaths = {
   signup: '/signup',
 
   // App (protected)
-  chat: '/chat',
+  home: '/',
 };

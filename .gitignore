@@ -134,3 +134,4 @@ public/uploads/
 *.p12
 *.jks
 service-account*.json
+serviceAccountKey.json

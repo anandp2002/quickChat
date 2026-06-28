@@ -2,10 +2,11 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Spinner } from '@/components/ui/Spinner';
 import { PublicRoute } from '@/routes/guards/PublicRoute';
+import { ProtectedRoute } from '@/routes/guards/ProtectedRoute';
 import { routePaths } from '@/routes/routePaths';
 
 // ---------------------------------------------------------------------------
-// Lazy-loaded layouts & pages
+// Lazy-loaded pages
 // ---------------------------------------------------------------------------
 const AuthLayout = lazy(() =>
   import('@/layouts/AuthLayout.jsx').then((m) => ({ default: m.AuthLayout })),
@@ -18,26 +19,16 @@ const SignupPage = lazy(() =>
     default: m.SignupPage,
   })),
 );
-
-// ---------------------------------------------------------------------------
-// Future protected routes — uncomment when ready:
-//
-// import { ProtectedRoute } from '@/routes/guards/ProtectedRoute';
-//
-// const ChatLayout = lazy(() =>
-//   import('@/layouts/ChatLayout.jsx').then(m => ({ default: m.ChatLayout })),
-// );
-// const ChatPage = lazy(() =>
-//   import('@/pages/chat/ChatPage.jsx').then(m => ({ default: m.ChatPage })),
-// );
-// ---------------------------------------------------------------------------
+const HomePage = lazy(() =>
+  import('@/pages/home/HomePage.jsx').then((m) => ({ default: m.HomePage })),
+);
 
 /**
  * Top-level route configuration.
  *
  * Structure:
  *   /login, /signup  → PublicRoute guard → AuthLayout
- *   /chat            → ProtectedRoute guard → ChatLayout (future)
+ *   /                → ProtectedRoute guard → HomePage
  *   *                → Redirect to login
  */
 export function AppRoutes() {
@@ -52,14 +43,10 @@ export function AppRoutes() {
           </Route>
         </Route>
 
-        {/* ---- Protected routes (future) ---- */}
-        {/*
+        {/* ---- Protected routes ---- */}
         <Route element={<ProtectedRoute />}>
-          <Route element={<ChatLayout />}>
-            <Route path={routePaths.chat} element={<ChatPage />} />
-          </Route>
+          <Route path={routePaths.home} element={<HomePage />} />
         </Route>
-        */}
 
         {/* ---- Catch-all ---- */}
         <Route
