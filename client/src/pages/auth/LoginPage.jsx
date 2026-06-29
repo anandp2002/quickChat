@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/config/firebase';
+import { signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
+import { auth, googleProvider } from '@/config/firebase';
+import { authService } from '@/services/authService';
 import { AuthCard } from '@/components/auth/AuthCard';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { GoogleButton } from '@/components/ui/GoogleButton';
+import { Divider } from '@/components/ui/Divider';
 import { TextField } from '@/components/ui/TextField';
 import { routePaths } from '@/routes/routePaths';
 
@@ -13,6 +16,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
@@ -40,6 +44,45 @@ export function LoginPage() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setGoogleLoading(true);
+
+    try {
+      const { user } = await signInWithPopup(auth, googleProvider);
+
+      // If this is the user's first time, create a Firestore profile.
+      // The register endpoint is idempotent so this is safe for returning users too.
+      await authService.register({
+        name: user.displayName || user.email.split('@')[0],
+      });
+
+      navigate(routePaths.home, { replace: true });
+    } catch (err) {
+      // User closed the popup — not an error worth showing
+      if (err.code === 'auth/popup-closed-by-user') return;
+
+      // Backend rejected: email already registered with a different method
+      if (err.status === 409) {
+        await signOut(auth);
+        setError(err.message);
+        return;
+      }
+
+      const messages = {
+        'auth/account-exists-with-different-credential':
+          'An account already exists with the same email. Try signing in with email/password.',
+        'auth/cancelled-popup-request': '',
+      };
+      const msg = messages[err.code];
+      if (msg !== '') setError(msg || err.message);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const isDisabled = loading || googleLoading;
+
   return (
     <AuthCard
       eyebrow="Welcome back"
@@ -57,12 +100,22 @@ export function LoginPage() {
         </p>
       }
     >
+      {/* ── Shared error display ── */}
+      {error && (
+        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          {error}
+        </p>
+      )}
+
+      {/* ── Google sign-in ── */}
+      <GoogleButton onClick={handleGoogleSignIn} disabled={isDisabled}>
+        {googleLoading ? 'Signing in…' : 'Continue with Google'}
+      </GoogleButton>
+
+      <Divider />
+
+      {/* ── Email / password form ── */}
       <form className="space-y-5" onSubmit={handleSubmit}>
-        {error && (
-          <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-            {error}
-          </p>
-        )}
 
         <TextField
           label="Email"
@@ -94,7 +147,7 @@ export function LoginPage() {
           </button>
         </div>
 
-        <PrimaryButton type="submit" disabled={loading}>
+        <PrimaryButton type="submit" disabled={isDisabled}>
           {loading ? 'Signing in…' : 'Sign in'}
         </PrimaryButton>
       </form>

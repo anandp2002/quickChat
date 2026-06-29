@@ -3,11 +3,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   createUserWithEmailAndPassword,
   updateProfile,
+  signInWithPopup,
+  signOut,
 } from 'firebase/auth';
-import { auth } from '@/config/firebase';
+import { auth, googleProvider } from '@/config/firebase';
 import { authService } from '@/services/authService';
 import { AuthCard } from '@/components/auth/AuthCard';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { GoogleButton } from '@/components/ui/GoogleButton';
+import { Divider } from '@/components/ui/Divider';
 import { TextField } from '@/components/ui/TextField';
 import { routePaths } from '@/routes/routePaths';
 
@@ -18,6 +22,7 @@ export function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
@@ -54,6 +59,45 @@ export function SignupPage() {
     }
   };
 
+  const handleGoogleSignUp = async () => {
+    setError('');
+    setGoogleLoading(true);
+
+    try {
+      const { user } = await signInWithPopup(auth, googleProvider);
+
+      // Create Firestore profile — the register endpoint is idempotent,
+      // so this is safe even if the user already has a profile.
+      await authService.register({
+        name: user.displayName || user.email.split('@')[0],
+      });
+
+      navigate(routePaths.home, { replace: true });
+    } catch (err) {
+      // User closed the popup — not an error worth showing
+      if (err.code === 'auth/popup-closed-by-user') return;
+
+      // Backend rejected: email already registered with a different method
+      if (err.status === 409) {
+        await signOut(auth);
+        setError(err.message);
+        return;
+      }
+
+      const messages = {
+        'auth/account-exists-with-different-credential':
+          'An account already exists with the same email. Try signing in with email/password.',
+        'auth/cancelled-popup-request': '',
+      };
+      const msg = messages[err.code];
+      if (msg !== '') setError(msg || err.message);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const isDisabled = loading || googleLoading;
+
   return (
     <AuthCard
       eyebrow="Get started"
@@ -71,12 +115,22 @@ export function SignupPage() {
         </p>
       }
     >
+      {/* ── Shared error display ── */}
+      {error && (
+        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          {error}
+        </p>
+      )}
+
+      {/* ── Google sign-up ── */}
+      <GoogleButton onClick={handleGoogleSignUp} disabled={isDisabled}>
+        {googleLoading ? 'Creating account…' : 'Continue with Google'}
+      </GoogleButton>
+
+      <Divider />
+
+      {/* ── Email / password form ── */}
       <form className="space-y-5" onSubmit={handleSubmit}>
-        {error && (
-          <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-            {error}
-          </p>
-        )}
 
         <TextField
           label="Full name"
@@ -117,7 +171,7 @@ export function SignupPage() {
           <span>I agree to the terms and privacy policy.</span>
         </label>
 
-        <PrimaryButton type="submit" disabled={loading}>
+        <PrimaryButton type="submit" disabled={isDisabled}>
           {loading ? 'Creating account…' : 'Create account'}
         </PrimaryButton>
       </form>
