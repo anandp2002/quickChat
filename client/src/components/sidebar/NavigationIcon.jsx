@@ -11,7 +11,7 @@ export function NavigationIcon({ name }) {
   if (!Icon) return null;
 
   return (
-    <span className="app-nav-icon">
+    <span className="grid h-5 w-5 shrink-0 place-items-center">
       <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
     </span>
   );
