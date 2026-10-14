@@ -22,13 +22,21 @@ const SignupPage = lazy(() =>
 const HomePage = lazy(() =>
   import('@/pages/home/HomePage.jsx').then((m) => ({ default: m.HomePage })),
 );
+const ChatPage = lazy(() =>
+  import('@/pages/chat/ChatPage.jsx').then((m) => ({ default: m.ChatPage })),
+);
+const MainLayout = lazy(() =>
+  import('@/layouts/MainLayout.jsx').then((m) => ({
+    default: m.MainLayout,
+  })),
+);
 
 /**
  * Top-level route configuration.
  *
  * Structure:
  *   /login, /signup  → PublicRoute guard → AuthLayout
- *   /                → ProtectedRoute guard → HomePage
+ *   /, /chat         → ProtectedRoute guard → MainLayout → page
  *   *                → Redirect to login
  */
 export function AppRoutes() {
@@ -45,14 +53,14 @@ export function AppRoutes() {
 
         {/* ---- Protected routes ---- */}
         <Route element={<ProtectedRoute />}>
-          <Route path={routePaths.home} element={<HomePage />} />
+          <Route element={<MainLayout />}>
+            <Route path={routePaths.home} element={<HomePage />} />
+            <Route path={routePaths.chat} element={<ChatPage />} />
+          </Route>
         </Route>
 
         {/* ---- Catch-all ---- */}
-        <Route
-          path="*"
-          element={<Navigate to={routePaths.login} replace />}
-        />
+        <Route path="*" element={<Navigate to={routePaths.login} replace />} />
       </Routes>
     </Suspense>
   );

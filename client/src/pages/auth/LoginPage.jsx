@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+} from 'firebase/auth';
 import { auth, googleProvider } from '@/config/firebase';
 import { authService } from '@/services/authService';
 import { AuthCard } from '@/components/auth/AuthCard';
@@ -89,11 +93,11 @@ export function LoginPage() {
       title="Sign in to QuickChat"
       description="Use your email and password to continue to your conversations."
       footer={
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-[#748278]">
           New here?{' '}
           <Link
             to={routePaths.signup}
-            className="font-semibold text-sky-500 transition hover:text-sky-600"
+            className="font-semibold text-[#5f7c58] transition hover:text-[#3f5d3b]"
           >
             Create an account
           </Link>
@@ -102,7 +106,7 @@ export function LoginPage() {
     >
       {/* ── Shared error display ── */}
       {error && (
-        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+        <p className="mb-4 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm font-medium text-[#b91c1c]">
           {error}
         </p>
       )}
@@ -116,7 +120,6 @@ export function LoginPage() {
 
       {/* ── Email / password form ── */}
       <form className="space-y-5" onSubmit={handleSubmit}>
-
         <TextField
           label="Email"
           type="email"
@@ -141,7 +144,7 @@ export function LoginPage() {
         <div className="flex items-center justify-between text-sm">
           <button
             type="button"
-            className="font-semibold text-sky-500 transition hover:text-sky-600"
+            className="font-semibold text-[#5f7c58] transition hover:text-[#3f5d3b]"
           >
             Forgot password?
           </button>
