@@ -1,6 +1,43 @@
-# QuickChat — Video Call Room Management (Backend)
+# QuickChat — Video Call Room Management (Backend & Real-Time Protocol)
 
-> Scope: room creation, joining, leaving, and cleanup. No WebRTC/SDP/ICE.
+> Scope: Authenticated Socket.IO handshakes, room creation, joining, leaving, peer notifications, and automatic cleanup. (No WebRTC/SDP/ICE signaling).
+
+---
+
+## Architecture & Zero-Trust Security Model
+
+QuickChat enforces strict server-side identity validation:
+1. **No Client Trust**: Client event payloads never contain `uid` or user credentials.
+2. **Handshake Verification**: Socket.IO connections are validated against Firebase Admin SDK via `socketAuthMiddleware` before triggering the `connection` event.
+3. **Session Binding**: Decoded claims are attached to `socket.data.user`. All business logic in `roomHandlers.js` resolves callers via `socket.data.user.uid`.
+4. **Isolated Rooms**: Sockets join room-specific channels (`socket.join(room.id)`), allowing scoped broadcasts without leaking information to non-members.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Alice as Alice (Client)
+    participant Auth as socketAuthMiddleware
+    participant FB as Firebase Admin SDK
+    participant Handler as roomHandlers.js
+    participant Store as roomManager.js (In-Memory)
+    actor Bob as Bob (Client)
+
+    Alice->>Auth: Handshake { auth: { token: "alice-jwt" } }
+    Auth->>FB: verifyIdToken("alice-jwt")
+    FB-->>Auth: { uid: "uid-alice" }
+    Auth->>Handler: socket.data.user = { uid: "uid-alice" }
+
+    Alice->>Handler: socket.emit("room:create")
+    Handler->>Store: createRoom("uid-alice", socket.id)
+    Store-->>Handler: { room: RoomSnapshot }
+    Handler-->>Alice: emit("room:created", { room })
+
+    Bob->>Handler: socket.emit("room:join", { roomId })
+    Handler->>Store: joinRoom(roomId, "uid-bob", socket.id)
+    Store-->>Handler: { room: RoomSnapshot }
+    Handler-->>Alice: emit("room:peer-joined", { room, peer: { uid: "uid-bob" } })
+    Handler-->>Bob: emit("room:joined", { room })
+```
 
 ---
 
@@ -13,6 +50,7 @@
 | [`src/socket/socketAuth.js`](file:///d:/MERN/Antigravity/quickChat/server/src/socket/socketAuth.js) | Socket.IO handshake middleware — verifies Firebase token |
 | [`src/socket/roomHandlers.js`](file:///d:/MERN/Antigravity/quickChat/server/src/socket/roomHandlers.js) | Event handlers: `room:create`, `room:join`, `room:leave`, `disconnect` |
 | [`src/socket/index.js`](file:///d:/MERN/Antigravity/quickChat/server/src/socket/index.js) | Wires auth middleware + handlers; exports `initSocketIO` |
+| [`client/src/services/socketService.js`](file:///d:/MERN/Antigravity/quickChat/client/src/services/socketService.js) | Client-side singleton socket client implementing matching protocol |
 
 ---
 

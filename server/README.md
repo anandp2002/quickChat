@@ -52,45 +52,90 @@ Ensure `server/serviceAccountKey.json` is present with valid Firebase Admin cred
 
 ---
 
-## Socket.IO Handshake Authentication
+## Socket.IO Real-Time Architecture & Handshake
 
-Every incoming Socket.IO connection must present a valid Firebase ID token in the handshake `auth` object:
+For an in-depth backend reference, see: [`server/src/docs/room_management_docs.md`](file:///d:/MERN/Antigravity/quickChat/server/src/docs/room_management_docs.md).
 
-```javascript
-const socket = io('http://localhost:5000', {
-  auth: { token: '<firebase-id-token>' }
-});
+QuickChat enforces **Zero-Trust WebSocket Authentication**. The client never provides its `uid` in event payloads. Instead, identity is determined cryptographically during connection establishment.
+
+### Authentication Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as React Client (socket.io-client)
+    participant AuthMW as Socket.IO Auth Middleware (socketAuth.js)
+    participant FBAdmin as Firebase Admin SDK
+    participant Handler as Room Handlers (roomHandlers.js)
+    participant Manager as Room Manager (roomManager.js)
+
+    Client->>AuthMW: Connect Handshake { auth: { token } }
+    AuthMW->>FBAdmin: admin.auth().verifyIdToken(token)
+    alt Invalid / Expired Token
+        FBAdmin-->>AuthMW: Verification Error
+        AuthMW-->>Client: connect_error: "Authentication error: invalid or expired token."
+    else Valid Token
+        FBAdmin-->>AuthMW: Decoded Token (uid, email, etc.)
+        AuthMW->>AuthMW: Attach to socket.data.user = decodedToken
+        AuthMW-->>Handler: Proceed to connection listener
+        Handler->>Handler: registerRoomHandlers(socket, io)
+    end
 ```
 
-1. **Verification**: `socketAuthMiddleware` intercepts the connection before the `connection` event fires and invokes `admin.auth().verifyIdToken(token)`.
-2. **Rejection**: If the token is missing, invalid, or expired, the connection is rejected with an Error and Socket.IO fires `connect_error` on the client.
-3. **Session Attachment**: Decoded token claims are attached to `socket.data.user`. Every event handler reads `socket.data.user.uid` directly from server state.
+1. **Handshake Interception (`socketAuth.js`)**:
+   - `io.use(socketAuthMiddleware)` intercepts incoming socket handshakes.
+   - Reads `socket.handshake.auth.token`.
+   - Rejects the connection if the token is missing or fails `auth.verifyIdToken(token)`.
+   - Stores the verified user payload in `socket.data.user`.
+2. **Identity Resolution (`roomHandlers.js`)**:
+   - Every handler extracts `const uid = socket.data.user.uid;`.
+   - Spoofing or impersonating another user is impossible.
 
 ---
 
-## Room Management Protocol
+## Room Management State Machine
 
-### Client → Server Events
+Each room transitions through predictable states:
 
-| Event | Payload | Description |
-|---|---|---|
-| `room:create` | None (`{}`) | Requests creation of a new room. Server validates user is not already in a room and generates a cryptographic URL-safe Room ID. |
-| `room:join` | `{ roomId: string }` | Requests joining an existing room. Server validates room exists, is not ended, and has capacity (< 2 peers). |
-| `room:leave` | None (`{}`) | Leaves the caller's active room. Notifies remaining peer or ends room if last user. |
-| `disconnect` | Built-in | Automatic transport disconnection. Executes the same cleanup as `room:leave`. |
+```mermaid
+stateDiagram-v2
+    [*] --> waiting : room:create (1 peer)
+    waiting --> active : room:join (2 peers)
+    active --> waiting : room:leave / disconnect (1 peer left)
+    waiting --> ended : room:leave / disconnect (0 peers left)
+    active --> ended : both leave simultaneously
+    ended --> [*] : Swept from memory after 5 minutes TTL
+```
 
-### Server → Client Events
+- **`waiting`**: Room created by host; awaiting peer join (1/2 participants).
+- **`active`**: Second participant joined; one-to-one call in progress (2/2 participants).
+- **`ended`**: Room closed because all participants left. Retained for 5 minutes TTL to reject late joiners gracefully before memory garbage collection.
 
-| Event | Payload | Description |
-|---|---|---|
-| `room:created` | `{ room: RoomSnapshot }` | Emitted to creator upon successful room creation. |
-| `room:joined` | `{ room: RoomSnapshot }` | Emitted to joiner upon successfully entering a room. |
-| `room:peer-joined` | `{ room: RoomSnapshot, peer: { uid } }` | Emitted to host/existing participant when second participant joins. |
-| `room:left` | `{ roomId: string, uid: string }` | Emitted to remaining peer when other participant leaves. |
-| `room:ended` | `{ roomId: string }` | Emitted to room members when room is closed (all left). |
-| `room:error` | `{ message: string }` | Emitted to requesting socket upon validation failure (e.g., room full, already in room, invalid ID). |
+---
 
-### Room Snapshot Shape
+## Event Reference
+
+### Client-to-Server (`socket.emit`)
+
+| Event | Payload | Auth Source | Description |
+|---|---|---|---|
+| `room:create` | `{}` | `socket.data.user.uid` | Requests room creation. Rejects if user is already in a room. |
+| `room:join` | `{ roomId: string }` | `socket.data.user.uid` | Requests joining an existing room. Rejects if room is missing, full, or ended. |
+| `room:leave` | `{}` | `socket.data.user.uid` | Leaves the user's active room. Reverts room to `'waiting'` or marks `'ended'`. |
+| `disconnect` | Built-in | `socket.data.user.uid` | Automatic transport disconnect. Invokes the same cleanup as `room:leave`. |
+
+### Server-to-Client (`socket.on`)
+
+| Event | Target | Payload | Description |
+|---|---|---|---|
+| `room:created` | Creator only | `{ room: RoomSnapshot }` | Confirms room created with crypto ID. |
+| `room:joined` | Joiner only | `{ room: RoomSnapshot }` | Confirms joiner entered the room. |
+| `room:peer-joined` | Existing host | `{ room: RoomSnapshot, peer: { uid } }` | Notifies host that the second peer has entered. |
+| `room:left` | Remaining peer | `{ roomId: string, uid: string }` | Notifies peer that their partner left. |
+| `room:ended` | All room members | `{ roomId: string }` | Emitted when room closes (all left). |
+| `room:error` | Caller only | `{ message: string }` | Emitted on validation errors (e.g. room full). |
+
+### Room Snapshot Data Shape
 
 ```json
 {
@@ -104,6 +149,80 @@ const socket = io('http://localhost:5000', {
   "endedAt": null
 }
 ```
+*Note: Socket IDs are strictly internal to the server and never exposed in `RoomSnapshot`.*
+
+---
+
+## Complete Step-by-Step Example
+
+### Scenario: User A creates a room, User B joins, User A leaves.
+
+#### 1. User A creates Room
+- **Client A emits:**
+  ```javascript
+  socketA.emit('room:create');
+  ```
+- **Server processes:**
+  - Validates `socketA.data.user.uid` is not already in a room.
+  - Generates 22-character URL-safe ID: `a8K_9mX1Z0q...`.
+  - Sets `hostUid = uidA`, `status = 'waiting'`.
+  - Joins Socket.IO channel: `socketA.join('a8K_9mX1Z0q...')`.
+- **Client A receives `room:created`:**
+  ```json
+  {
+    "room": {
+      "id": "a8K_9mX1Z0q...",
+      "hostUid": "uid-A",
+      "status": "waiting",
+      "participants": [{ "uid": "uid-A", "joinedAt": 1729000000000 }],
+      "createdAt": 1729000000000,
+      "endedAt": null
+    }
+  }
+  ```
+
+#### 2. User B joins Room
+- **Client B emits:**
+  ```javascript
+  socketB.emit('room:join', { roomId: 'a8K_9mX1Z0q...' });
+  ```
+- **Server processes:**
+  - Validates room exists and `participants.size < 2`.
+  - Adds `uid-B` to participants; updates `room.status = 'active'`.
+  - Emits `room:peer-joined` to User A:
+    ```json
+    {
+      "room": {
+        "id": "a8K_9mX1Z0q...",
+        "hostUid": "uid-A",
+        "status": "active",
+        "participants": [
+          { "uid": "uid-A", "joinedAt": 1729000000000 },
+          { "uid": "uid-B", "joinedAt": 1729000010000 }
+        ],
+        "createdAt": 1729000000000,
+        "endedAt": null
+      },
+      "peer": { "uid": "uid-B" }
+    }
+    ```
+  - Joins `socketB` to Socket.IO channel: `socketB.join('a8K_9mX1Z0q...')`.
+  - Emits `room:joined` to User B with the updated `RoomSnapshot`.
+
+#### 3. User A leaves Room
+- **Client A emits:**
+  ```javascript
+  socketA.emit('room:leave');
+  ```
+- **Server processes:**
+  - Removes `uid-A`.
+  - Transfers host role to User B: `room.hostUid = 'uid-B'`.
+  - Reverts status to `'waiting'`.
+  - Emits `room:left` to User B:
+    ```json
+    { "roomId": "a8K_9mX1Z0q...", "uid": "uid-A" }
+    ```
+  - `socketA.leave('a8K_9mX1Z0q...')`.
 
 ---
 
@@ -116,3 +235,4 @@ npm run dev
 ```
 
 Server starts on `http://localhost:5000` with WebSocket upgrade enabled.
+

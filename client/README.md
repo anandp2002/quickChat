@@ -128,37 +128,122 @@ Routes are centralized in `client/src/routes/routePaths.js`.
 
 ## Real-Time Video Call Room Management
 
-QuickChat integrates Socket.IO with Firebase ID token handshake authentication for room orchestration:
+QuickChat integrates Socket.IO with Firebase ID token handshake authentication for secure, peer-to-peer room orchestration. For a deep architectural breakdown, see the dedicated guide: [`client/docs/SOCKET_ARCHITECTURE.md`](file:///d:/MERN/Antigravity/quickChat/client/docs/SOCKET_ARCHITECTURE.md).
 
-### Architecture
+### Architecture & Components
+
+```text
+┌────────────────────────────────────────────────────────┐
+│ UI Layer: VideoCallPage.jsx                            │
+│   ├── VideoCallHero.jsx                                │
+│   ├── CreateRoomCard.jsx (Create & Copy Room ID)       │
+│   └── JoinRoomCard.jsx   (Input ID & Status Indicator) │
+└───────────────────────────┬────────────────────────────┘
+                            │ Hooks & Redux Selectors
+┌───────────────────────────▼────────────────────────────┐
+│ Custom Hook: useVideoCall.js                           │
+│   • Manages socket connection lifecycle & unmount      │
+│   • Subscribes to Socket.IO events                     │
+│   • Dispatches state updates to Redux roomSlice        │
+│   • Handles Clipboard API copying with legacy fallback │
+└─────────────┬────────────────────────────┬─────────────┘
+              │ Calls Methods              │ Dispatches Actions
+┌─────────────▼──────────────┐ ┌───────────▼─────────────┐
+│ socketService.js           │ │ roomSlice.js            │
+│   • Singleton Socket.IO    │ │   • currentRoom         │
+│   • Firebase token fetch   │ │   • isCreating          │
+│   • Automatic token refresh│ │   • isJoining           │
+│   • Event emission methods │ │   • socketConnected     │
+└─────────────┬──────────────┘ └─────────────────────────┘
+              │ WSS / Polling
+┌─────────────▼──────────────┐
+│ Express + Socket.IO Server │
+└────────────────────────────┘
+```
 
 1. **`socketService.js` (`client/src/services/socketService.js`)**:
    - Singleton client manager connecting to `VITE_API_URL` (default `http://localhost:5000`).
    - Retrieves the verified Firebase ID token from `auth.currentUser.getIdToken()`.
    - Sends the token in `io(URL, { auth: { token } })`.
-   - Server-side Firebase Admin SDK verifies token authenticity and extracts `socket.data.user.uid`.
-   - Client never sends unverified `uid`, email, or name in event payloads.
+   - Automatically handles token expiry during reconnects.
+   - Zero-Trust: Event emitters never include client `uid`, email, or display name.
 2. **`roomSlice.js` (`client/src/store/slices/roomSlice.js`)**:
    - Centralizes `currentRoom`, `isCreating`, `isJoining`, `socketConnected`, `error`, and `successMessage`.
 3. **`useVideoCall.js` (`client/src/pages/video-call/hooks/useVideoCall.js`)**:
    - Orchestrates socket lifecycle, connects on demand or mount, registers event listeners cleanly, and detaches listeners on unmount to prevent memory leaks.
    - Handles Clipboard API copying with browser fallbacks.
 
-### Event Flow
+### Step-by-Step Socket Lifecycle
 
-1. **Create Room**:
-   - Creator clicks **Create Room** on `/video-call`.
-   - Client establishes verified Socket.IO connection and emits `room:create`.
-   - Server verifies token, creates room with crypto-random ID, and emits `room:created` with `RoomSnapshot`.
-   - Client sets room as active, displays Room ID, and provides a **Copy ID** button.
-2. **Join Room**:
-   - Peer enters Room ID on `/video-call` and clicks **Join Room**.
-   - Client emits `room:join` with `{ roomId }`.
-   - Server validates room capacity (< 2 peers) and emits `room:joined` to peer and `room:peer-joined` to host.
-   - Status updates dynamically to **Connected (2/2)** on both screens.
-3. **Leave / Disconnect**:
-   - Either user clicking **Leave Room** or closing their browser emits `room:leave` or `disconnect`.
-   - Server notifies the peer (`room:left`) or closes the room (`room:ended`).
+#### 1. Authenticated Connection Handshake
+Before sending any room events, the client connects to Socket.IO:
+```javascript
+import { io } from 'socket.io-client';
+import { auth } from '@/config/firebase';
+
+const token = await auth.currentUser.getIdToken();
+const socket = io('http://localhost:5000', {
+  auth: { token },
+  reconnection: true
+});
+```
+The server verifies this token via Firebase Admin SDK. If valid, the decoded UID is bound to `socket.data.user.uid`.
+
+#### 2. Create Room (`room:create`)
+- Creator calls `emitCreateRoom()`:
+  ```javascript
+  socket.emit('room:create');
+  ```
+- Server generates a crypto-random Room ID (e.g. `u4Kl8_91bCq-d10mKz`) and returns:
+  ```json
+  // Event: 'room:created'
+  {
+    "room": {
+      "id": "u4Kl8_91bCq-d10mKz",
+      "hostUid": "firebase-uid-creator",
+      "status": "waiting",
+      "participants": [{ "uid": "firebase-uid-creator", "joinedAt": 1729000000000 }],
+      "createdAt": 1729000000000,
+      "endedAt": null
+    }
+  }
+  ```
+- Client dispatches `createRoomSuccess(room)`. The creator sees the Room ID with a **Copy ID** button and a status badge: **"Waiting for peer (1/2)"**.
+
+#### 3. Join Room (`room:join`)
+- Peer enters the Room ID and calls `emitJoinRoom(roomId)`:
+  ```javascript
+  socket.emit('room:join', { roomId: 'u4Kl8_91bCq-d10mKz' });
+  ```
+- Server validates that the room exists, has capacity (< 2 peers), and has not ended.
+- Server emits `room:joined` to the joiner and `room:peer-joined` to the creator:
+  ```json
+  // Event: 'room:peer-joined' (sent to creator)
+  {
+    "room": {
+      "id": "u4Kl8_91bCq-d10mKz",
+      "hostUid": "firebase-uid-creator",
+      "status": "active",
+      "participants": [
+        { "uid": "firebase-uid-creator", "joinedAt": 1729000000000 },
+        { "uid": "firebase-uid-joiner", "joinedAt": 1729000015000 }
+      ],
+      "createdAt": 1729000000000,
+      "endedAt": null
+    },
+    "peer": { "uid": "firebase-uid-joiner" }
+  }
+  ```
+- Both clients now display **"Connected (2/2)"**.
+
+#### 4. Leave Room (`room:leave` or `disconnect`)
+- Either participant clicks **Leave Room** or closes the browser window:
+  ```javascript
+  socket.emit('room:leave');
+  ```
+- Server handles departure:
+  - If 1 peer remains: Emits `room:left` (`{ roomId, uid }`). Remaining peer's room reverts to status `'waiting'`.
+  - If 0 peers remain: Emits `room:ended` (`{ roomId }`). Room is marked `'ended'` and evicted after 5 minutes.
 
 ---
 
@@ -195,4 +280,5 @@ All auth API requests require a Firebase ID token in the `Authorization` header.
 | `GET`  | `/`                  | Server health check             |
 | `POST` | `/api/auth/register` | Create or update a user profile |
 | `GET`  | `/api/auth/me`       | Get the current user profile    |
+
 
