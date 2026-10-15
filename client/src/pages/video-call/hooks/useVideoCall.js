@@ -1,74 +1,313 @@
-import { useState, useCallback } from 'react';
-import { useSelector } from 'react-redux';
+import { useState, useCallback, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import {
+  connectSocket,
+  getSocket,
+  emitCreateRoom,
+  emitJoinRoom,
+  emitLeaveRoom,
+} from '@/services/socketService';
+import {
+  setSocketConnected,
+  setSocketError,
+  createRoomStart,
+  createRoomSuccess,
+  createRoomFailure,
+  joinRoomStart,
+  joinRoomSuccess,
+  joinRoomFailure,
+  peerJoined,
+  peerLeft,
+  roomEnded,
+  leaveRoomAction,
+  clearRoomError,
+  clearRoomSuccess,
+} from '@/store/slices/roomSlice';
 
 /**
- * useVideoCall — custom hook for the Video Call page.
+ * useVideoCall — custom hook managing room orchestration, Socket.IO
+ * subscriptions, Redux synchronisation, and local form/clipboard state.
  *
- * Owns all state and event handlers so every child component
- * receives plain values and callbacks — no Redux or business
- * logic leaks into the UI layer.
- *
- * Responsibilities:
- *   • Read the current authenticated user from Redux.
- *   • Manage the "join room" form field and its validation state.
- *   • Expose placeholder handlers that will be replaced with
- *     real Socket.IO calls in Step 2.
- *
- * @returns {{
- *   user: object|null,
- *   roomId: string,
- *   roomIdError: string,
- *   handleRoomIdChange: function,
- *   handleCreateRoom: function,
- *   handleJoinRoom: function,
- * }}
+ * All business logic lives here so UI components remain purely presentational.
  */
 export function useVideoCall() {
+  const dispatch = useDispatch();
+
+  // Redux auth state (reused from existing store)
   const user = useSelector((state) => state.auth.user);
 
+  // Redux room state
+  const {
+    currentRoom,
+    isCreating,
+    isJoining,
+    error,
+    successMessage,
+    socketConnected,
+    socketError,
+  } = useSelector((state) => state.room);
+
+  // Local form state
   const [roomId, setRoomId] = useState('');
   const [roomIdError, setRoomIdError] = useState('');
+  const [copied, setCopied] = useState(false);
 
-  /** Clear the error the moment the user starts correcting their input. */
+  // Is the current user the host of the active room?
+  const isHost = Boolean(
+    currentRoom && user && currentRoom.hostUid === user.uid,
+  );
+
+  /**
+   * Socket lifecycle & event listener management.
+   * Attaches clean listeners when socket connects and cleans them up on unmount.
+   */
+  useEffect(() => {
+    let currentSocket = getSocket();
+
+    const handleRoomCreated = ({ room }) => {
+      dispatch(createRoomSuccess(room));
+    };
+
+    const handleRoomJoined = ({ room }) => {
+      dispatch(joinRoomSuccess(room));
+    };
+
+    const handlePeerJoined = (data) => {
+      dispatch(peerJoined(data));
+    };
+
+    const handleRoomLeft = (data) => {
+      dispatch(peerLeft(data));
+    };
+
+    const handleRoomEnded = (data) => {
+      dispatch(roomEnded(data));
+    };
+
+    const handleRoomError = ({ message }) => {
+      // Dispatches error to whichever action was pending
+      dispatch(createRoomFailure(message));
+      dispatch(joinRoomFailure(message));
+    };
+
+    const handleConnect = () => {
+      dispatch(setSocketConnected(true));
+    };
+
+    const handleDisconnect = () => {
+      dispatch(setSocketConnected(false));
+    };
+
+    const handleConnectError = (err) => {
+      dispatch(setSocketError(err?.message || 'Socket connection failed.'));
+    };
+
+    const attachListeners = (s) => {
+      if (!s) return;
+      s.off('room:created', handleRoomCreated);
+      s.off('room:joined', handleRoomJoined);
+      s.off('room:peer-joined', handlePeerJoined);
+      s.off('room:left', handleRoomLeft);
+      s.off('room:ended', handleRoomEnded);
+      s.off('room:error', handleRoomError);
+      s.off('connect', handleConnect);
+      s.off('disconnect', handleDisconnect);
+      s.off('connect_error', handleConnectError);
+
+      s.on('room:created', handleRoomCreated);
+      s.on('room:joined', handleRoomJoined);
+      s.on('room:peer-joined', handlePeerJoined);
+      s.on('room:left', handleRoomLeft);
+      s.on('room:ended', handleRoomEnded);
+      s.on('room:error', handleRoomError);
+      s.on('connect', handleConnect);
+      s.on('disconnect', handleDisconnect);
+      s.on('connect_error', handleConnectError);
+    };
+
+    const detachListeners = (s) => {
+      if (!s) return;
+      s.off('room:created', handleRoomCreated);
+      s.off('room:joined', handleRoomJoined);
+      s.off('room:peer-joined', handlePeerJoined);
+      s.off('room:left', handleRoomLeft);
+      s.off('room:ended', handleRoomEnded);
+      s.off('room:error', handleRoomError);
+      s.off('connect', handleConnect);
+      s.off('disconnect', handleDisconnect);
+      s.off('connect_error', handleConnectError);
+    };
+
+    if (user) {
+      connectSocket()
+        .then((s) => {
+          currentSocket = s;
+          attachListeners(s);
+          dispatch(setSocketConnected(s.connected));
+        })
+        .catch((err) => {
+          // Socket connection failure handled gracefully without creating a room
+          console.warn('[useVideoCall] Connection error on mount:', err.message);
+          dispatch(setSocketError(err.message));
+        });
+    }
+
+    return () => {
+      if (currentSocket) {
+        detachListeners(currentSocket);
+      }
+    };
+  }, [user, dispatch]);
+
+  /** Clear input validation errors as user types */
   const handleRoomIdChange = useCallback(
     (e) => {
       setRoomId(e.target.value);
       if (roomIdError) setRoomIdError('');
+      if (error) dispatch(clearRoomError());
     },
-    [roomIdError],
+    [roomIdError, error, dispatch],
   );
 
   /**
-   * Placeholder: initiate room creation.
-   * TODO (Step 2): emit Socket.IO "create-room" and navigate to the call view.
+   * Create a new room.
+   *
+   * Verifies socket connection first. If connection fails, surfaces error
+   * without creating a room or emitting room:create.
    */
-  const handleCreateRoom = useCallback(() => {
-    console.log('[VideoCall] Create room — uid:', user?.uid);
-  }, [user?.uid]);
+  const handleCreateRoom = useCallback(async () => {
+    // Prevent duplicate submissions or creating while already hosting/joining
+    if (isCreating || isJoining || currentRoom) {
+      return;
+    }
+
+    dispatch(createRoomStart());
+
+    try {
+      const activeSocket = await connectSocket();
+      if (!activeSocket?.connected) {
+        throw new Error('Real-time connection unavailable. Please check your network.');
+      }
+      emitCreateRoom();
+    } catch (err) {
+      console.error('[useVideoCall] handleCreateRoom failed:', err);
+      dispatch(
+        createRoomFailure(
+          err.message || 'Unable to connect to the room server. Please try again.',
+        ),
+      );
+    }
+  }, [isCreating, isJoining, currentRoom, dispatch]);
 
   /**
-   * Placeholder: validate and join an existing room.
-   * TODO (Step 2): emit Socket.IO "join-room" and navigate to the call view.
+   * Join an existing room with validation and error protection.
    */
   const handleJoinRoom = useCallback(
-    (e) => {
-      e.preventDefault();
-      if (!roomId.trim()) {
+    async (e) => {
+      if (e) e.preventDefault();
+
+      if (isJoining || isCreating) {
+        return;
+      }
+
+      const trimmedId = roomId.trim();
+      if (!trimmedId) {
         setRoomIdError('Please enter a Room ID before joining.');
         return;
       }
+
       setRoomIdError('');
-      console.log('[VideoCall] Join room:', roomId.trim(), '— uid:', user?.uid);
+      dispatch(joinRoomStart());
+
+      try {
+        const activeSocket = await connectSocket();
+        if (!activeSocket?.connected) {
+          throw new Error('Real-time connection unavailable. Please check your network.');
+        }
+        emitJoinRoom(trimmedId);
+      } catch (err) {
+        console.error('[useVideoCall] handleJoinRoom failed:', err);
+        dispatch(
+          joinRoomFailure(
+            err.message || 'Unable to join the requested room. Please try again.',
+          ),
+        );
+      }
     },
-    [roomId, user?.uid],
+    [roomId, isJoining, isCreating, dispatch],
   );
+
+  /**
+   * Leave current active room.
+   */
+  const handleLeaveRoom = useCallback(() => {
+    try {
+      emitLeaveRoom();
+    } catch (err) {
+      console.warn('[useVideoCall] Error while leaving room:', err.message);
+    }
+    dispatch(leaveRoomAction());
+  }, [dispatch]);
+
+  /**
+   * Copy Room ID to clipboard with browser fallback and visual feedback.
+   */
+  const handleCopyRoomId = useCallback(
+    async (idToCopy) => {
+      const text = idToCopy || currentRoom?.id;
+      if (!text) return;
+
+      try {
+        if (navigator?.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          // Fallback for non-secure contexts
+          const textArea = document.createElement('textarea');
+          textArea.value = text;
+          textArea.style.position = 'fixed';
+          textArea.style.left = '-999999px';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+        }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      } catch (err) {
+        console.error('[useVideoCall] Failed to copy room ID:', err);
+      }
+    },
+    [currentRoom?.id],
+  );
+
+  const handleDismissError = useCallback(() => {
+    dispatch(clearRoomError());
+  }, [dispatch]);
+
+  const handleDismissSuccess = useCallback(() => {
+    dispatch(clearRoomSuccess());
+  }, [dispatch]);
 
   return {
     user,
+    currentRoom,
+    isHost,
     roomId,
     roomIdError,
+    isCreating,
+    isJoining,
+    error,
+    successMessage,
+    socketConnected,
+    socketError,
+    copied,
     handleRoomIdChange,
     handleCreateRoom,
     handleJoinRoom,
+    handleLeaveRoom,
+    handleCopyRoomId,
+    handleDismissError,
+    handleDismissSuccess,
   };
 }

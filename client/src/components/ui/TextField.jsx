@@ -12,6 +12,7 @@ export function TextField({
   value,
   onChange,
   required = false,
+  disabled = false,
   className = '',
 }) {
   const inputId = id || name;
@@ -33,7 +34,8 @@ export function TextField({
         placeholder={placeholder}
         autoComplete={autoComplete}
         required={required}
-        className="w-full rounded-xl border border-[#ccd9cb] bg-white px-4 py-3 text-[#203229] outline-none transition placeholder:text-[#9aa69d] focus:border-[#6b8963] focus:ring-4 focus:ring-[#6b8963]/10"
+        disabled={disabled}
+        className="w-full rounded-xl border border-[#ccd9cb] bg-white px-4 py-3 text-[#203229] outline-none transition placeholder:text-[#9aa69d] focus:border-[#6b8963] focus:ring-4 focus:ring-[#6b8963]/10 disabled:cursor-not-allowed disabled:bg-[#f2f6f3] disabled:text-[#8d9b92]"
       />
     </div>
   );
