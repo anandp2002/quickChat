@@ -7,6 +7,7 @@ import {
   emitJoinRoom,
   emitLeaveRoom,
 } from '@/services/socketService';
+import { releaseStream } from '@/services/mediaService';
 import {
   setSocketConnected,
   setSocketError,
@@ -26,7 +27,19 @@ import {
 
 /**
  * useVideoCall — custom hook managing room orchestration, Socket.IO
- * subscriptions, Redux synchronisation, and local form/clipboard state.
+ * subscriptions, Redux synchronisation, lobby visibility, and local
+ * form/clipboard state.
+ *
+ * Lobby state
+ * ────────────
+ * `lobbyActive` is a local boolean flag that goes true once the server confirms
+ * room creation or joining. It goes false again when the user cancels (leaves
+ * the lobby) or when handleStartCall is called (proceeds to the call).
+ *
+ * Media lifecycle
+ * ────────────────
+ * This hook does NOT acquire media. Acquisition is triggered by <PreCallLobby>
+ * on mount. Releasing media on cancel is handled here via releaseStream().
  *
  * All business logic lives here so UI components remain purely presentational.
  */
@@ -52,6 +65,10 @@ export function useVideoCall() {
   const [roomIdError, setRoomIdError] = useState('');
   const [copied, setCopied] = useState(false);
 
+  // Lobby visibility flag — true after a successful room:created / room:joined.
+  // Kept local so it doesn't persist across page reloads or Redux rehydration.
+  const [lobbyActive, setLobbyActive] = useState(false);
+
   // Is the current user the host of the active room?
   const isHost = Boolean(
     currentRoom && user && currentRoom.hostUid === user.uid,
@@ -66,10 +83,14 @@ export function useVideoCall() {
 
     const handleRoomCreated = ({ room }) => {
       dispatch(createRoomSuccess(room));
+      // Open the lobby after the server confirms the room.
+      setLobbyActive(true);
     };
 
     const handleRoomJoined = ({ room }) => {
       dispatch(joinRoomSuccess(room));
+      // Open the lobby after successfully joining.
+      setLobbyActive(true);
     };
 
     const handlePeerJoined = (data) => {
@@ -82,12 +103,18 @@ export function useVideoCall() {
 
     const handleRoomEnded = (data) => {
       dispatch(roomEnded(data));
+      // If the room ended while we were in the lobby, close the lobby and
+      // release media so the user isn't left with a dangling stream.
+      setLobbyActive(false);
+      releaseStream();
     };
 
     const handleRoomError = ({ message }) => {
       // Dispatches error to whichever action was pending
       dispatch(createRoomFailure(message));
       dispatch(joinRoomFailure(message));
+      // Ensure the lobby is not shown on error.
+      setLobbyActive(false);
     };
 
     const handleConnect = () => {
@@ -238,7 +265,8 @@ export function useVideoCall() {
   );
 
   /**
-   * Leave current active room.
+   * Leave current active room (used by the home-view cards).
+   * Also releases media since leaving from the home view means the session ends.
    */
   const handleLeaveRoom = useCallback(() => {
     try {
@@ -247,7 +275,38 @@ export function useVideoCall() {
       console.warn('[useVideoCall] Error while leaving room:', err.message);
     }
     dispatch(leaveRoomAction());
+    setLobbyActive(false);
+    releaseStream();
   }, [dispatch]);
+
+  /**
+   * User cancelled the pre-call lobby.
+   * Emits room:leave, clears Redux state, closes the lobby, and releases media.
+   */
+  const handleCancelLobby = useCallback(() => {
+    try {
+      emitLeaveRoom();
+    } catch (err) {
+      console.warn('[useVideoCall] Error leaving room on lobby cancel:', err.message);
+    }
+    dispatch(leaveRoomAction());
+    setLobbyActive(false);
+    releaseStream();
+  }, [dispatch]);
+
+  /**
+   * User clicked "Start Call" / "Join Call" in the lobby.
+   * Closes the lobby and proceeds to the in-call screen.
+   *
+   * The MediaStream is NOT released here — the in-call screen will reuse it.
+   * Step 5 (WebRTC) will call pc.addTrack(track, stream) using the existing stream.
+   */
+  const handleStartCall = useCallback(() => {
+    setLobbyActive(false);
+    // TODO (Step 5): navigate to the in-call screen / start WebRTC negotiation.
+    // The stream is preserved in mediaService and can be retrieved with getStream().
+    console.log('[useVideoCall] Starting call — stream preserved for WebRTC step.');
+  }, []);
 
   /**
    * Copy Room ID to clipboard with browser fallback and visual feedback.
@@ -302,6 +361,7 @@ export function useVideoCall() {
     socketConnected,
     socketError,
     copied,
+    lobbyActive,
     handleRoomIdChange,
     handleCreateRoom,
     handleJoinRoom,
@@ -309,5 +369,7 @@ export function useVideoCall() {
     handleCopyRoomId,
     handleDismissError,
     handleDismissSuccess,
+    handleStartCall,
+    handleCancelLobby,
   };
 }

@@ -4,6 +4,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { PublicRoute } from '@/routes/guards/PublicRoute';
 import { ProtectedRoute } from '@/routes/guards/ProtectedRoute';
 import { routePaths } from '@/routes/routePaths';
+import { MediaProvider } from '@/context/MediaContext';
 
 // ---------------------------------------------------------------------------
 // Lazy-loaded pages
@@ -41,8 +42,12 @@ const MainLayout = lazy(() =>
  *
  * Structure:
  *   /login, /signup  → PublicRoute guard → AuthLayout
- *   /, /chat         → ProtectedRoute guard → MainLayout → page
+ *   /, /chat         → ProtectedRoute guard → MediaProvider → MainLayout → page
  *   *                → Redirect to login
+ *
+ * MediaProvider is mounted around all protected routes so the local
+ * MediaStream persists across page navigations within the app.
+ * Public/auth routes do not receive the provider — they never need media.
  */
 export function AppRoutes() {
   return (
@@ -58,7 +63,19 @@ export function AppRoutes() {
 
         {/* ---- Protected routes ---- */}
         <Route element={<ProtectedRoute />}>
-          <Route element={<MainLayout />}>
+          {/*
+           * MediaProvider wraps all protected routes so that:
+           * 1. The MediaStream is shared across VideoCallPage → (future) InCallPage.
+           * 2. The stream survives navigations within the protected area.
+           * 3. Auth/public routes never trigger media permission requests.
+           */}
+          <Route
+            element={
+              <MediaProvider>
+                <MainLayout />
+              </MediaProvider>
+            }
+          >
             <Route path={routePaths.home} element={<HomePage />} />
             <Route path={routePaths.chat} element={<ChatPage />} />
             <Route path={routePaths.videoCall} element={<VideoCallPage />} />
