@@ -1,8 +1,10 @@
+import { createServer } from 'http';
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
 import './src/config/firebase.js';
 import authRoutes from './src/routes/authRoutes.js';
+import { initSocketIO } from './src/socket/index.js';
 
 export const app = express();
 const PORT = process.env.PORT || 5000;
@@ -10,7 +12,10 @@ const PORT = process.env.PORT || 5000;
 // ---------------------------------------------------------------------------
 // Global middleware
 // ---------------------------------------------------------------------------
-app.use(cors());
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true,
+}));
 app.use(express.json());
 
 // ---------------------------------------------------------------------------
@@ -23,8 +28,14 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 
 // ---------------------------------------------------------------------------
-// Start
+// HTTP + Socket.IO server
 // ---------------------------------------------------------------------------
-app.listen(PORT, () => {
+const httpServer = createServer(app);
+
+// Attach Socket.IO to the shared HTTP server.
+const io = initSocketIO(httpServer);
+
+httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
