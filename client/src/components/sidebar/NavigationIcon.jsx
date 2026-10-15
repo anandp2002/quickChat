@@ -1,8 +1,9 @@
-import { House, MessageCircle } from 'lucide-react';
+import { House, MessageCircle, Video } from 'lucide-react';
 
 const iconRegistry = {
   home: House,
   chat: MessageCircle,
+  video: Video,
 };
 
 export function NavigationIcon({ name }) {

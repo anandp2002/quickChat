@@ -15,4 +15,9 @@ export const navigationItems = [
     path: routePaths.chat,
     icon: 'chat',
   },
+  {
+    label: 'Video call',
+    path: routePaths.videoCall,
+    icon: 'video',
+  },
 ];

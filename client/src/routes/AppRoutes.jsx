@@ -25,6 +25,11 @@ const HomePage = lazy(() =>
 const ChatPage = lazy(() =>
   import('@/pages/chat/ChatPage.jsx').then((m) => ({ default: m.ChatPage })),
 );
+const VideoCallPage = lazy(() =>
+  import('@/pages/video-call/VideoCallPage.jsx').then((m) => ({
+    default: m.VideoCallPage,
+  })),
+);
 const MainLayout = lazy(() =>
   import('@/layouts/MainLayout.jsx').then((m) => ({
     default: m.MainLayout,
@@ -56,6 +61,7 @@ export function AppRoutes() {
           <Route element={<MainLayout />}>
             <Route path={routePaths.home} element={<HomePage />} />
             <Route path={routePaths.chat} element={<ChatPage />} />
+            <Route path={routePaths.videoCall} element={<VideoCallPage />} />
           </Route>
         </Route>
 
