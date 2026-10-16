@@ -186,3 +186,61 @@ export function emitLeaveRoom() {
   }
   socketInstance.emit('room:leave');
 }
+
+/**
+ * Emit `room:peer-ready` to declare readiness for WebRTC negotiation.
+ *
+ * @param {string} roomId
+ */
+export function emitPeerReady(roomId) {
+  if (!socketInstance?.connected) {
+    throw new Error('Socket is not connected. Unable to signal peer readiness.');
+  }
+  socketInstance.emit('room:peer-ready', { roomId });
+}
+
+/**
+ * Emit `rtc:offer` to relay SDP offer to peer in the specified room.
+ *
+ * @param {string} roomId
+ * @param {RTCSessionDescriptionInit | object} sdp
+ */
+export function emitRtcOffer(roomId, sdp) {
+  if (!socketInstance?.connected) {
+    throw new Error('Socket is not connected. Unable to send RTC offer.');
+  }
+  socketInstance.emit('rtc:offer', { roomId, sdp });
+}
+
+/**
+ * Emit `rtc:answer` to relay SDP answer to peer in the specified room.
+ *
+ * @param {string} roomId
+ * @param {RTCSessionDescriptionInit | object} sdp
+ */
+export function emitRtcAnswer(roomId, sdp) {
+  if (!socketInstance?.connected) {
+    throw new Error('Socket is not connected. Unable to send RTC answer.');
+  }
+  socketInstance.emit('rtc:answer', { roomId, sdp });
+}
+
+/**
+ * Emit `rtc:ice-candidate` to relay an ICE candidate to the peer in the room.
+ *
+ * Implements trickle ICE — called once per gathered candidate so the peer
+ * can begin connectivity checks without waiting for gathering to complete.
+ *
+ * @param {string} roomId
+ * @param {object | null} candidate
+ *   A serialised RTCIceCandidateInit object, or null to signal
+ *   end-of-candidates (all local candidates have been gathered).
+ */
+export function emitRtcIceCandidate(roomId, candidate) {
+  if (!socketInstance?.connected) {
+    // Silently drop — the socket may have disconnected during gathering.
+    console.warn('[socketService] emitRtcIceCandidate: socket not connected, dropping candidate.');
+    return;
+  }
+  socketInstance.emit('rtc:ice-candidate', { roomId, candidate });
+}

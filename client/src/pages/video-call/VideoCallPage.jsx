@@ -4,6 +4,7 @@ import { VideoCallHero } from './components/VideoCallHero';
 import { CreateRoomCard } from './components/CreateRoomCard';
 import { JoinRoomCard } from './components/JoinRoomCard';
 import { PreCallLobby } from './components/PreCallLobby';
+import { InCallScreen } from './components/InCallScreen';
 
 /**
  * VideoCallPage — Page orchestrator for real-time room creation and joining.
@@ -14,8 +15,10 @@ import { PreCallLobby } from './components/PreCallLobby';
  * • Lobby view  — shown as a full-screen overlay once a room is ready
  *                 (currentRoom is set) AND the user has not yet entered
  *                 the call (lobbyActive).
+ * • In-call     — shown as a full-screen overlay when inCall is active
+ *                 and lobby is closed.
  *
- * The home view is always in the DOM when the lobby is not active so that
+ * The home view is always in the DOM when lobby and in-call are not active so that
  * socket listeners, Redux state, and form values are preserved.
  *
  * Camera / microphone are NOT requested until the lobby mounts.
@@ -34,6 +37,8 @@ export function VideoCallPage() {
     socketError,
     copied,
     lobbyActive,
+    inCall,
+    peerPresent,
     handleRoomIdChange,
     handleCreateRoom,
     handleJoinRoom,
@@ -43,6 +48,7 @@ export function VideoCallPage() {
     handleDismissSuccess,
     handleStartCall,
     handleCancelLobby,
+    handleEndCall,
   } = useVideoCall();
 
   return (
@@ -58,6 +64,19 @@ export function VideoCallPage() {
           copied={copied}
         />
       )}
+
+      {/* ── In-call screen overlay ──────────────────────────────────────── */}
+      {inCall && currentRoom && !lobbyActive && (
+        <InCallScreen
+          roomId={currentRoom.id}
+          isHost={isHost}
+          peerPresent={peerPresent}
+          onEndCall={handleEndCall}
+          onCopyRoomId={handleCopyRoomId}
+          copied={copied}
+        />
+      )}
+
 
       {/* ── Home / room management view ────────────────────────────────── */}
       <div className="mx-auto w-full max-w-[1040px] px-5 py-10 sm:px-[7vw] sm:py-[8vw] lg:px-[7vw] lg:py-[8vw]">

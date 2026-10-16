@@ -8,6 +8,7 @@
 import { Server } from 'socket.io';
 import { socketAuthMiddleware } from './socketAuth.js';
 import { registerRoomHandlers } from './roomHandlers.js';
+import { registerSignalingHandlers } from './signalingHandlers.js';
 
 /**
  * Create and configure the Socket.IO server attached to the given HTTP server.
@@ -38,6 +39,9 @@ export function initSocketIO(httpServer) {
 
         // Wire all room events for this socket.
         registerRoomHandlers(socket, io);
+
+        // Wire WebRTC signaling events (SDP offer/answer relay).
+        registerSignalingHandlers(socket, io);
     });
 
     return io;

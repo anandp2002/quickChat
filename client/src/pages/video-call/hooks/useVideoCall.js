@@ -69,9 +69,17 @@ export function useVideoCall() {
   // Kept local so it doesn't persist across page reloads or Redux rehydration.
   const [lobbyActive, setLobbyActive] = useState(false);
 
+  // In-call visibility flag — true when user transitions from lobby to in-call screen.
+  const [inCall, setInCall] = useState(false);
+
   // Is the current user the host of the active room?
   const isHost = Boolean(
     currentRoom && user && currentRoom.hostUid === user.uid,
+  );
+
+  // Is there a peer participant present in the active room?
+  const peerPresent = Boolean(
+    currentRoom?.participants?.some((p) => p.uid !== user?.uid),
   );
 
   /**
@@ -103,9 +111,10 @@ export function useVideoCall() {
 
     const handleRoomEnded = (data) => {
       dispatch(roomEnded(data));
-      // If the room ended while we were in the lobby, close the lobby and
+      // If the room ended while we were in the lobby or call, close them and
       // release media so the user isn't left with a dangling stream.
       setLobbyActive(false);
+      setInCall(false);
       releaseStream();
     };
 
@@ -113,8 +122,9 @@ export function useVideoCall() {
       // Dispatches error to whichever action was pending
       dispatch(createRoomFailure(message));
       dispatch(joinRoomFailure(message));
-      // Ensure the lobby is not shown on error.
+      // Ensure the lobby and call are not shown on error.
       setLobbyActive(false);
+      setInCall(false);
     };
 
     const handleConnect = () => {
@@ -276,6 +286,7 @@ export function useVideoCall() {
     }
     dispatch(leaveRoomAction());
     setLobbyActive(false);
+    setInCall(false);
     releaseStream();
   }, [dispatch]);
 
@@ -291,6 +302,7 @@ export function useVideoCall() {
     }
     dispatch(leaveRoomAction());
     setLobbyActive(false);
+    setInCall(false);
     releaseStream();
   }, [dispatch]);
 
@@ -298,15 +310,29 @@ export function useVideoCall() {
    * User clicked "Start Call" / "Join Call" in the lobby.
    * Closes the lobby and proceeds to the in-call screen.
    *
-   * The MediaStream is NOT released here — the in-call screen will reuse it.
-   * Step 5 (WebRTC) will call pc.addTrack(track, stream) using the existing stream.
+   * The MediaStream is preserved in mediaService and reused by InCallScreen / useWebRTC.
    */
   const handleStartCall = useCallback(() => {
     setLobbyActive(false);
-    // TODO (Step 5): navigate to the in-call screen / start WebRTC negotiation.
-    // The stream is preserved in mediaService and can be retrieved with getStream().
-    console.log('[useVideoCall] Starting call — stream preserved for WebRTC step.');
+    setInCall(true);
+    console.log('[useVideoCall] Starting call — transitioning to in-call screen.');
   }, []);
+
+  /**
+   * User clicked "End Call" in the in-call screen.
+   * Emits room:leave, clears Redux state, closes the call screen, and releases media.
+   */
+  const handleEndCall = useCallback(() => {
+    try {
+      emitLeaveRoom();
+    } catch (err) {
+      console.warn('[useVideoCall] Error while leaving room on end call:', err.message);
+    }
+    dispatch(leaveRoomAction());
+    setLobbyActive(false);
+    setInCall(false);
+    releaseStream();
+  }, [dispatch]);
 
   /**
    * Copy Room ID to clipboard with browser fallback and visual feedback.
@@ -362,6 +388,8 @@ export function useVideoCall() {
     socketError,
     copied,
     lobbyActive,
+    inCall,
+    peerPresent,
     handleRoomIdChange,
     handleCreateRoom,
     handleJoinRoom,
@@ -371,5 +399,6 @@ export function useVideoCall() {
     handleDismissSuccess,
     handleStartCall,
     handleCancelLobby,
+    handleEndCall,
   };
 }
