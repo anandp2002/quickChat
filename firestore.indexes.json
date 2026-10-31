@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "friendships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "recipientId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "friendships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "members", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

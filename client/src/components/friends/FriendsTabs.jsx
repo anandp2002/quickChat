@@ -1,6 +1,6 @@
 import { friendTabs } from '@/config/friends';
 
-export function FriendsTabs({ activeTab, onTabChange }) {
+export function FriendsTabs({ activeTab, onTabChange, requestCount = 0 }) {
   return (
     <div
       className="grid grid-cols-3 gap-1 rounded-[10px] bg-[#edf3ef] p-1"
@@ -21,9 +21,9 @@ export function FriendsTabs({ activeTab, onTabChange }) {
           onClick={() => onTabChange(tab.id)}
         >
           {tab.label}
-          {tab.count ? (
+          {tab.id === 'requests' && requestCount ? (
             <span className="ml-1.5 inline-grid min-w-5 place-items-center rounded-full bg-[#d8e9df] px-1.5 py-0.5 text-[0.66rem] text-[#176044]">
-              {tab.count}
+              {requestCount}
             </span>
           ) : null}
         </button>

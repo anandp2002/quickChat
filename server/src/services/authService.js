@@ -67,4 +67,3 @@ export const getUserByEmail = async (email) => {
 
   return snapshot.docs[0].data();
 };
-
