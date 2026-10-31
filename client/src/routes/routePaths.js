@@ -12,4 +12,5 @@ export const routePaths = {
   // App (protected)
   home: '/',
   chat: '/chat',
+  friends: '/friends',
 };

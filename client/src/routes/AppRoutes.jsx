@@ -25,6 +25,11 @@ const HomePage = lazy(() =>
 const ChatPage = lazy(() =>
   import('@/pages/chat/ChatPage.jsx').then((m) => ({ default: m.ChatPage })),
 );
+const FriendsPage = lazy(() =>
+  import('@/pages/friends/FriendsPage.jsx').then((m) => ({
+    default: m.FriendsPage,
+  })),
+);
 const MainLayout = lazy(() =>
   import('@/layouts/MainLayout.jsx').then((m) => ({
     default: m.MainLayout,
@@ -36,7 +41,7 @@ const MainLayout = lazy(() =>
  *
  * Structure:
  *   /login, /signup  → PublicRoute guard → AuthLayout
- *   /, /chat         → ProtectedRoute guard → MainLayout → page
+ *   /, /chat, /friends → ProtectedRoute guard → MainLayout → page
  *   *                → Redirect to login
  */
 export function AppRoutes() {
@@ -56,6 +61,7 @@ export function AppRoutes() {
           <Route element={<MainLayout />}>
             <Route path={routePaths.home} element={<HomePage />} />
             <Route path={routePaths.chat} element={<ChatPage />} />
+            <Route path={routePaths.friends} element={<FriendsPage />} />
           </Route>
         </Route>
 
