@@ -76,10 +76,12 @@ export const listDiscoverableUsers = async ({ uid, search = '', limit = 20 }) =>
       return `${user.name || ''} ${user.email || ''}`
         .toLowerCase()
         .includes(normalizedSearch);
-    })
-    .slice(0, safeLimit);
+    });
 
-  return getUsersWithRelationships(uid, users);
+  const usersWithRelationships = await getUsersWithRelationships(uid, users);
+  return usersWithRelationships
+    .filter((user) => user.relationshipStatus !== 'accepted')
+    .slice(0, safeLimit);
 };
 
 export const listRelationships = async (uid, status) => {
