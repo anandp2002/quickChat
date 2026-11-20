@@ -1,48 +1,99 @@
 import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { MessageCircleMore, UserRoundPlus, UsersRound } from 'lucide-react';
+import { routePaths } from '@/routes/routePaths';
 
-/**
- * Home page — shown after login/signup.
- */
 export function HomePage() {
   const user = useSelector((state) => state.auth.user);
+  const navigate = useNavigate();
+  const firstName = user?.displayName?.split(' ')[0] || 'there';
 
   return (
-    <div className="mx-auto w-full max-w-[1040px] px-5 py-10 sm:px-[7vw] sm:py-[8vw] lg:px-[7vw] lg:py-[8vw]">
-      <header className="max-w-[650px]">
-        <p className="mb-3 font-sans text-[0.7rem] font-bold uppercase tracking-[0.12em] text-brand">
-          Workspace
-        </p>
-        <h1 className="m-0 text-[clamp(2.3rem,5vw,4.2rem)] font-normal leading-none tracking-[-0.05em] text-text-heading">
-          Good to see you, {user?.displayName?.split(' ')[0] || 'there'}.
-        </h1>
-        <p className="mt-5 font-sans text-[0.95rem] leading-[1.6] text-text-muted">
-          Pick up where you left off or start a new conversation.
-        </p>
+    <div className="h-full w-full overflow-y-auto bg-app px-5 py-6 sm:px-8 sm:py-8 lg:px-10">
+      <header className="flex items-center justify-between gap-4">
+        <div>
+          <p className="m-0 font-sans text-[0.7rem] font-bold uppercase tracking-[0.12em] text-brand">
+            Home
+          </p>
+          <h1 className="m-0 mt-2 font-sans text-[clamp(1.8rem,4vw,2.8rem)] font-semibold leading-tight tracking-[-0.04em] text-text-heading">
+            Good to see you, {firstName}.
+          </h1>
+        </div>
       </header>
-      <div className="mt-9 grid grid-cols-1 gap-4 sm:mt-[58px] sm:gap-[18px] lg:grid-cols-[minmax(0,1.4fr)_minmax(220px,0.8fr)]">
-        <section className="min-h-[230px] rounded-card border border-border-subtle bg-surface-accent p-[34px] lg:min-h-[270px]">
-          <span className="mb-3 font-sans text-[0.7rem] font-bold uppercase tracking-[0.12em] text-brand">
-            QuickChat
+
+      <section className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[1.4fr_0.8fr]">
+        <button
+          type="button"
+          onClick={() => navigate(routePaths.chat)}
+          className="group min-h-[230px] rounded-panel border border-border-subtle bg-surface-accent p-7 text-left transition-transform hover:-translate-y-0.5"
+        >
+          <span className="grid h-12 w-12 place-items-center rounded-full bg-surface text-brand shadow-card">
+            <MessageCircleMore size={22} strokeWidth={1.8} aria-hidden="true" />
           </span>
-          <h2 className="m-0 max-w-[420px] text-[clamp(1.8rem,3vw,2.7rem)] font-normal leading-[1.05] tracking-[-0.04em] text-text-brand">
-            Your conversations, in one calm place.
+          <p className="m-0 mt-8 font-sans text-[0.7rem] font-bold uppercase tracking-[0.12em] text-brand">
+            Messages
+          </p>
+          <h2 className="m-0 mt-2 max-w-[420px] font-sans text-[clamp(1.7rem,3vw,2.5rem)] font-semibold leading-[1.05] tracking-[-0.04em] text-text-brand">
+            Continue your conversations
           </h2>
-          <p className="mt-7 max-w-[360px] font-sans text-[0.88rem] leading-[1.6] text-text-secondary">
-            Head to Chat from the sidebar when you are ready to connect.
+          <p className="m-0 mt-4 font-sans text-[0.82rem] text-text-secondary">
+            Open your inbox and catch up with friends.
           </p>
-        </section>
-        <section className="self-start rounded-card border border-border-subtle bg-surface p-7">
-          <span className="mb-3 font-sans text-[0.7rem] font-bold uppercase tracking-[0.12em] text-brand">
-            Signed in as
+        </button>
+
+        <div className="grid min-h-[230px] gap-4 sm:grid-cols-2 xl:grid-cols-1">
+          <button
+            type="button"
+            onClick={() => navigate(routePaths.friends)}
+            className="rounded-panel border border-border-subtle bg-surface p-6 text-left transition-colors hover:bg-surface-muted"
+          >
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-soft text-text-brand">
+              <UsersRound size={19} aria-hidden="true" />
+            </span>
+            <h2 className="m-0 mt-5 font-sans text-[1.05rem] font-semibold text-text-primary">
+              Your friends
+            </h2>
+            <p className="m-0 mt-2 font-sans text-[0.78rem] leading-5 text-text-muted">
+              View and manage your connections.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate(routePaths.friends)}
+            className="rounded-panel border border-border-subtle bg-surface p-6 text-left transition-colors hover:bg-surface-muted"
+          >
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-soft text-text-brand">
+              <UserRoundPlus size={19} aria-hidden="true" />
+            </span>
+            <h2 className="m-0 mt-5 font-sans text-[1.05rem] font-semibold text-text-primary">
+              Find people
+            </h2>
+            <p className="m-0 mt-2 font-sans text-[0.78rem] leading-5 text-text-muted">
+              Discover people and send friend requests.
+            </p>
+          </button>
+        </div>
+      </section>
+
+      <section className="mt-4 rounded-panel border border-border-subtle bg-surface p-6 sm:p-7">
+        <p className="m-0 font-sans text-[0.7rem] font-bold uppercase tracking-[0.12em] text-brand">
+          Account
+        </p>
+        <div className="mt-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="m-0 font-sans text-[1.05rem] font-semibold text-text-primary">
+              {user?.displayName || 'QuickChat account'}
+            </h2>
+            <p className="m-0 mt-1 break-all font-sans text-[0.78rem] text-text-muted">
+              {user?.email || 'Signed in'}
+            </p>
+          </div>
+          <span className="mt-3 w-fit rounded-full bg-surface-active px-3 py-1.5 font-sans text-[0.72rem] font-semibold text-text-brand sm:mt-0">
+            Account active
           </span>
-          <strong className="block break-words font-sans text-[0.9rem] text-text-primary">
-            {user?.email}
-          </strong>
-          <p className="mt-2 font-sans text-[0.88rem] leading-[1.6] text-text-secondary">
-            Your account is ready to use.
-          </p>
-        </section>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }
