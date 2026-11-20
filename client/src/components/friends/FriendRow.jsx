@@ -7,7 +7,7 @@ export function FriendRow({
   onSecondaryAction,
 }) {
   return (
-    <li className="flex items-center gap-3 border-b border-[#edf1ee] py-4 last:border-b-0">
+    <li className="flex items-center gap-3 border-b border-border-divider py-4 last:border-b-0">
       {friend.photoURL ? (
         <img
           src={friend.photoURL}
@@ -15,7 +15,7 @@ export function FriendRow({
           className="h-11 w-11 shrink-0 rounded-full object-cover"
         />
       ) : (
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#dcefe8] font-sans text-[0.85rem] font-semibold text-[#176044]">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-soft font-sans text-[0.85rem] font-semibold text-text-brand">
           {(friend.name || '?')
             .split(/\s+/)
             .map((part) => part[0])
@@ -25,10 +25,10 @@ export function FriendRow({
         </span>
       )}
       <div className="min-w-0 flex-1">
-        <p className="m-0 truncate font-sans text-[0.9rem] font-semibold text-[#263a33]">
+        <p className="m-0 truncate font-sans text-[0.9rem] font-semibold text-text-primary">
           {friend.name}
         </p>
-        <p className="m-0 mt-0.5 truncate font-sans text-[0.73rem] text-[#77827e]">
+        <p className="m-0 mt-0.5 truncate font-sans text-[0.73rem] text-text-muted">
           {friend.username}
         </p>
       </div>
@@ -36,7 +36,7 @@ export function FriendRow({
         {secondaryActionLabel ? (
           <button
             type="button"
-            className="rounded-full border border-[#dce6e0] px-3 py-1.5 font-sans text-[0.72rem] text-[#667772] hover:bg-[#f4f7f5]"
+            className="rounded-full border border-border-subtle px-3 py-1.5 font-sans text-[0.72rem] text-text-secondary hover:bg-surface-muted"
             onClick={onSecondaryAction}
           >
             {secondaryActionLabel}
@@ -46,10 +46,10 @@ export function FriendRow({
           <button
             type="button"
             disabled={isActionDisabled}
-            className={`rounded-full border px-3 py-1.5 font-sans text-[0.72rem] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#73c49e] ${
+            className={`rounded-full border px-3 py-1.5 font-sans text-[0.72rem] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
               isActionDisabled
-                ? 'cursor-default border-[#cbd9d1] text-[#84908d]'
-                : 'border-[#b8d5c3] bg-[#e1f0e7] text-[#176044] hover:bg-[#d2e8da]'
+                ? 'cursor-default border-border-subtle text-text-muted'
+                : 'border-border-active bg-brand-soft text-text-brand hover:bg-surface-accent'
             }`}
             onClick={onAction}
           >

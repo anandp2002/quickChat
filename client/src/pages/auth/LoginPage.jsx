@@ -93,11 +93,11 @@ export function LoginPage() {
       title="Sign in to QuickChat"
       description="Use your email and password to continue to your conversations."
       footer={
-        <p className="text-sm text-[#748278]">
+        <p className="text-sm text-text-secondary">
           New here?{' '}
           <Link
             to={routePaths.signup}
-            className="font-semibold text-[#5f7c58] transition hover:text-[#3f5d3b]"
+            className="font-semibold text-brand transition hover:text-brand-strong"
           >
             Create an account
           </Link>
@@ -106,7 +106,7 @@ export function LoginPage() {
     >
       {/* ── Shared error display ── */}
       {error && (
-        <p className="mb-4 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm font-medium text-[#b91c1c]">
+        <p className="mb-4 rounded-field border border-danger-border bg-danger-soft px-4 py-3 text-sm font-medium text-danger">
           {error}
         </p>
       )}
@@ -144,7 +144,7 @@ export function LoginPage() {
         <div className="flex items-center justify-between text-sm">
           <button
             type="button"
-            className="font-semibold text-[#5f7c58] transition hover:text-[#3f5d3b]"
+            className="font-semibold text-brand transition hover:text-brand-strong"
           >
             Forgot password?
           </button>

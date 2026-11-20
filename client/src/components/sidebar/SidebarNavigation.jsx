@@ -16,7 +16,7 @@ export function SidebarNavigation({ items, collapsed = false, onNavigate }) {
           title={item.label}
           onClick={onNavigate}
           className={({ isActive }) =>
-            `relative flex min-h-11 flex-1 items-center justify-center gap-3 rounded-[10px] px-2.5 py-2.5 text-[#6e7b78] no-underline transition-[background-color,color,padding] duration-150 hover:bg-[#e7f1eb] hover:text-[#176044] min-[701px]:w-full min-[701px]:flex-none ${collapsed ? 'min-[701px]:justify-center min-[701px]:px-0' : 'min-[701px]:justify-start min-[701px]:px-3'} ${isActive ? 'bg-[#e7f1eb] text-[#176044]' : ''}`
+            `relative flex min-h-11 flex-1 items-center justify-center gap-3 rounded-control px-2.5 py-2.5 text-text-muted no-underline transition-[background-color,color,padding] duration-150 hover:bg-surface-active hover:text-text-brand min-[701px]:w-full min-[701px]:flex-none ${collapsed ? 'min-[701px]:justify-center min-[701px]:px-0' : 'min-[701px]:justify-start min-[701px]:px-3'} ${isActive ? 'bg-surface-active text-text-brand' : ''}`
           }
         >
           <NavigationIcon name={item.icon} />

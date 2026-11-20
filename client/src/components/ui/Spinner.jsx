@@ -9,7 +9,7 @@ export function Spinner({ size = 'full' }) {
       className={
         isInline
           ? 'flex min-h-24 items-center justify-center'
-          : 'flex min-h-screen items-center justify-center bg-white'
+          : 'flex min-h-screen items-center justify-center bg-surface'
       }
       role="status"
       aria-label="Loading"
@@ -17,8 +17,8 @@ export function Spinner({ size = 'full' }) {
       <div
         className={
           isInline
-            ? 'h-6 w-6 animate-spin rounded-full border-2 border-[#dce6da] border-t-[#5f7c58]'
-            : 'h-10 w-10 animate-spin rounded-full border-4 border-[#dce6da] border-t-[#5f7c58]'
+            ? 'h-6 w-6 animate-spin rounded-full border-2 border-border-divider border-t-brand'
+            : 'h-10 w-10 animate-spin rounded-full border-4 border-border-divider border-t-brand'
         }
       />
     </div>

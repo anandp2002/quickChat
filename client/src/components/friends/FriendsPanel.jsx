@@ -153,14 +153,14 @@ export function FriendsPanel() {
   const copy = tabCopy[activeTab];
 
   return (
-    <section className="w-full max-w-[768px] rounded-[18px] border border-[#dce6e0] bg-white p-5 text-[#1c3029] shadow-[0_20px_60px_rgba(30,65,48,0.08)] sm:p-7">
+    <section className="w-full max-w-[768px] rounded-panel border border-border-subtle bg-surface p-5 text-text-heading shadow-card sm:p-7">
       <header>
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <h1 className="m-0 font-sans text-[1.35rem] font-semibold tracking-[-0.03em]">
               Friends
             </h1>
-            <p className="m-0 mt-1 font-sans text-[0.82rem] text-[#77827e]">
+            <p className="m-0 mt-1 font-sans text-[0.82rem] text-text-muted">
               Discover people and manage your connections.
             </p>
           </div>
@@ -168,7 +168,7 @@ export function FriendsPanel() {
             type="button"
             onClick={handleRefresh}
             disabled={loading}
-            className="mt-0 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#dce6e0] text-[#4a9271] transition-colors hover:bg-[#edf5f1] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#73c49e] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-0 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border-subtle text-brand transition-colors hover:bg-surface-active focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-60"
             aria-label="Refresh friends"
             title="Refresh friends"
           >
@@ -190,7 +190,7 @@ export function FriendsPanel() {
 
       <div className="relative mt-5">
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#77827e]"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
             size={17}
             aria-hidden="true"
           />
@@ -212,16 +212,16 @@ export function FriendsPanel() {
                   ? 'Search requests by name or email'
                   : 'Search people by name or email'
             }
-            className="h-11 w-full rounded-[9px] border border-[#dce6e0] bg-[#f8faf8] px-10 font-sans text-[0.8rem] text-[#253a33] outline-none placeholder:text-[#89968f] focus:border-[#4a9271]"
+            className="h-11 w-full rounded-control border border-border-subtle bg-surface-muted px-10 font-sans text-[0.8rem] text-text-primary outline-none placeholder:text-text-muted focus:border-brand"
           />
         </div>
 
       <div className="mt-6">
-        <h2 className="m-0 font-sans text-[0.92rem] font-semibold text-[#263a33]">
+        <h2 className="m-0 font-sans text-[0.92rem] font-semibold text-text-primary">
           {copy.title}
         </h2>
         {error ? (
-          <p className="mt-3 rounded-lg bg-[#fff1f0] p-3 font-sans text-[0.8rem] text-[#b42318]">
+          <p className="mt-3 rounded-lg bg-danger-soft p-3 font-sans text-[0.8rem] text-danger">
             {error}
           </p>
         ) : loading ? (
@@ -266,8 +266,8 @@ export function FriendsPanel() {
             })}
           </ul>
         ) : (
-          <div className="mt-3 flex min-h-32 flex-col items-center justify-center rounded-[12px] border border-dashed border-[#dce6e0] bg-[#fafcfb] px-5 py-6 text-center">
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-[#edf5f1] text-[#4a9271]">
+          <div className="mt-3 flex min-h-32 flex-col items-center justify-center rounded-card border border-dashed border-border-subtle bg-surface-subtle px-5 py-6 text-center">
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-surface-active text-brand">
               {activeTab === 'friends' ? (
                 <UsersRound size={18} aria-hidden="true" />
               ) : activeTab === 'requests' ? (
@@ -276,7 +276,7 @@ export function FriendsPanel() {
                 <UserRoundPlus size={18} aria-hidden="true" />
               )}
             </span>
-            <p className="m-0 mt-3 font-sans text-[0.82rem] font-semibold text-[#263a33]">
+            <p className="m-0 mt-3 font-sans text-[0.82rem] font-semibold text-text-primary">
               {query
                 ? activeTab === 'friends'
                   ? 'No friends match your search.'
@@ -285,7 +285,7 @@ export function FriendsPanel() {
                     : 'No people match your search.'
                 : copy.empty}
             </p>
-            <p className="m-0 mt-1 font-sans text-[0.74rem] leading-5 text-[#77827e]">
+            <p className="m-0 mt-1 font-sans text-[0.74rem] leading-5 text-text-muted">
               {query
                 ? 'Try a different name or email address.'
                 : activeTab === 'discover'

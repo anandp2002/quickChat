@@ -20,7 +20,7 @@ export function TextField({
     <div className={className}>
       <label
         htmlFor={inputId}
-        className="mb-2 block text-sm font-medium text-[#435647]"
+        className="mb-2 block text-sm font-medium text-text-primary"
       >
         {label}
       </label>
@@ -33,7 +33,7 @@ export function TextField({
         placeholder={placeholder}
         autoComplete={autoComplete}
         required={required}
-        className="w-full rounded-xl border border-[#ccd9cb] bg-white px-4 py-3 text-[#203229] outline-none transition placeholder:text-[#9aa69d] focus:border-[#6b8963] focus:ring-4 focus:ring-[#6b8963]/10"
+        className="w-full rounded-field border border-border-control bg-surface px-4 py-3 text-text-primary outline-none transition placeholder:text-text-muted/70 focus:border-brand focus:ring-4 focus:ring-brand/10"
       />
     </div>
   );

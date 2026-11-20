@@ -104,11 +104,11 @@ export function SignupPage() {
       title="Create your account"
       description="Set up your profile and start using QuickChat in a few quick steps."
       footer={
-        <p className="text-sm text-[#748278]">
+        <p className="text-sm text-text-secondary">
           Already have an account?{' '}
           <Link
             to={routePaths.login}
-            className="font-semibold text-[#5f7c58] transition hover:text-[#3f5d3b]"
+            className="font-semibold text-brand transition hover:text-brand-strong"
           >
             Sign in
           </Link>
@@ -117,7 +117,7 @@ export function SignupPage() {
     >
       {/* ── Shared error display ── */}
       {error && (
-        <p className="mb-4 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm font-medium text-[#b91c1c]">
+        <p className="mb-4 rounded-field border border-danger-border bg-danger-soft px-4 py-3 text-sm font-medium text-danger">
           {error}
         </p>
       )}
@@ -161,10 +161,10 @@ export function SignupPage() {
           required
         />
 
-        <label className="flex items-start gap-3 text-sm text-[#748278]">
+        <label className="flex items-start gap-3 text-sm text-text-secondary">
           <input
             type="checkbox"
-            className="mt-1 rounded border-[#b8cbb5] text-[#5f7c58] focus:ring-[#6b8963]"
+            className="mt-1 rounded border-border-active text-brand focus:ring-brand"
             required
           />
           <span>I agree to the terms and privacy policy.</span>

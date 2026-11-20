@@ -8,7 +8,7 @@ export function GoogleButton({ onClick, disabled = false, children }) {
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex w-full items-center justify-center gap-3 rounded-xl border border-[#d3dfd2] bg-white px-4 py-3.5 text-sm font-semibold text-[#3d5043] shadow-sm transition hover:border-[#aabd9f] hover:bg-[#f7faf6] hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex w-full items-center justify-center gap-3 rounded-field border border-border-subtle bg-surface px-4 py-3.5 text-sm font-semibold text-text-primary shadow-sm transition hover:border-border-active hover:bg-surface-muted hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
     >
       {/* Google "G" logo SVG */}
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">

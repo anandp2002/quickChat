@@ -14,7 +14,7 @@ export function PrimaryButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex w-full items-center justify-center rounded-xl bg-[#5f7c58] px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#4f6b49] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5f7c58] disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={`inline-flex w-full items-center justify-center rounded-field bg-brand px-4 py-3.5 text-sm font-semibold text-text-on-brand transition hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
     >
       {children}
     </button>
