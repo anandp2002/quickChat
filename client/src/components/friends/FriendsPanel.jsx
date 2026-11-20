@@ -10,6 +10,7 @@ import { friendService } from '@/services/friendService';
 import { FriendRow } from '@/components/friends/FriendRow';
 import { FriendsTabs } from '@/components/friends/FriendsTabs';
 import { Spinner } from '@/components/ui/Spinner';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 const tabCopy = {
   friends: {
@@ -35,6 +36,7 @@ export function FriendsPanel() {
   const [error, setError] = useState('');
   const [pendingAction, setPendingAction] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [confirmation, setConfirmation] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -105,6 +107,7 @@ export function FriendsPanel() {
   };
 
   const handleSendRequest = async (userId) => {
+    if (pendingAction) return;
     setPendingAction(userId);
     setError('');
     try {
@@ -118,35 +121,62 @@ export function FriendsPanel() {
       );
     } catch (requestError) {
       setError(requestError.message);
+      if (requestError.status === 409 || requestError.status === 404) {
+        setRefreshKey((current) => current + 1);
+      }
     } finally {
       setPendingAction('');
     }
   };
 
   const handleRequestResponse = async (userId, action) => {
+    if (pendingAction) return;
     setPendingAction(userId);
     setError('');
     try {
       await friendService.respondToRequest(userId, action);
       setFriends((current) => current.filter((friend) => friend.id !== userId));
       setRequestCount((count) => Math.max(0, count - 1));
+      setConfirmation(null);
     } catch (requestError) {
       setError(requestError.message);
+      if (requestError.status === 404 || requestError.status === 409) {
+        setRefreshKey((current) => current + 1);
+      }
     } finally {
       setPendingAction('');
     }
   };
 
   const handleRemoveFriend = async (userId) => {
+    if (pendingAction) return;
     setPendingAction(userId);
     setError('');
     try {
       await friendService.remove(userId);
       setFriends((current) => current.filter((friend) => friend.id !== userId));
+      setConfirmation(null);
     } catch (requestError) {
       setError(requestError.message);
+      if (requestError.status === 404 || requestError.status === 409) {
+        setRefreshKey((current) => current + 1);
+      }
     } finally {
       setPendingAction('');
+    }
+  };
+
+  const openConfirmation = (friend, type) => {
+    if (pendingAction) return;
+    setConfirmation({ friend, type });
+  };
+
+  const handleConfirmation = () => {
+    if (!confirmation) return;
+    if (confirmation.type === 'decline') {
+      handleRequestResponse(confirmation.friend.id, 'decline');
+    } else {
+      handleRemoveFriend(confirmation.friend.id);
     }
   };
 
@@ -252,14 +282,15 @@ export function FriendsPanel() {
                     activeTab === 'requests'
                       ? handleRequestResponse(friend.id, 'accept')
                       : activeTab === 'friends'
-                        ? handleRemoveFriend(friend.id)
+                        ? openConfirmation(friend, 'remove')
                         : handleSendRequest(friend.id)
                   }
                   secondaryActionLabel={
                     activeTab === 'requests' ? 'Decline' : null
                   }
+                  isSecondaryActionDisabled={isPending}
                   onSecondaryAction={() =>
-                    handleRequestResponse(friend.id, 'decline')
+                    openConfirmation(friend, 'decline')
                   }
                 />
               );
@@ -297,6 +328,25 @@ export function FriendsPanel() {
           </div>
         )}
       </div>
+      <ConfirmationModal
+        open={Boolean(confirmation)}
+        title={
+          confirmation?.type === 'remove'
+            ? 'Remove friend?'
+            : 'Decline friend request?'
+        }
+        description={
+          confirmation?.type === 'remove'
+            ? `This will remove ${confirmation.friend.name} from your friends.`
+            : `This will decline the friend request from ${confirmation?.friend?.name || 'this person'} and it will no longer appear in your requests.`
+        }
+        confirmLabel={
+          confirmation?.type === 'remove' ? 'Remove friend' : 'Decline request'
+        }
+        onConfirm={handleConfirmation}
+        onClose={() => setConfirmation(null)}
+        isConfirming={Boolean(pendingAction)}
+      />
     </section>
   );
 }

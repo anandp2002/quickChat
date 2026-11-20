@@ -155,6 +155,17 @@ export const sendRequest = async (requesterId, recipientId) => {
         return;
       }
 
+      if (
+        existing.data().status === 'pending' &&
+        existing.data().recipientId === requesterId
+      ) {
+        const error = new Error(
+          'You already have a pending request from this person. Accept it from your friend requests.',
+        );
+        error.status = 409;
+        throw error;
+      }
+
       const error = new Error(
         existing.data().status === 'accepted'
           ? 'You are already friends.'
@@ -216,7 +227,11 @@ export const removeFriend = async (uid, otherUid) => {
     .doc(relationshipId(uid, otherUid));
   const snapshot = await friendshipRef.get();
 
-  if (!snapshot.exists || !snapshot.data().members.includes(uid)) {
+  if (
+    !snapshot.exists ||
+    !snapshot.data().members?.includes(uid) ||
+    snapshot.data().status !== 'accepted'
+  ) {
     const error = new Error('Friendship not found.');
     error.status = 404;
     throw error;

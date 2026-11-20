@@ -5,6 +5,7 @@ export function FriendRow({
   isActionDisabled,
   secondaryActionLabel,
   onSecondaryAction,
+  isSecondaryActionDisabled = false,
 }) {
   return (
     <li className="flex items-center gap-3 border-b border-border-divider py-4 last:border-b-0">
@@ -36,7 +37,8 @@ export function FriendRow({
         {secondaryActionLabel ? (
           <button
             type="button"
-            className="rounded-full border border-border-subtle px-3 py-1.5 font-sans text-[0.72rem] text-text-secondary hover:bg-surface-muted"
+            disabled={isSecondaryActionDisabled}
+            className="rounded-full border border-border-subtle px-3 py-1.5 font-sans text-[0.72rem] text-text-secondary hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
             onClick={onSecondaryAction}
           >
             {secondaryActionLabel}
