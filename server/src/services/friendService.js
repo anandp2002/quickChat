@@ -17,6 +17,8 @@ const toIsoString = (value) => {
 const publicUser = (data) => ({
   id: data.uid,
   name: data.name || 'Unnamed user',
+  email: data.email || null,
+  username: data.email ? `@${data.email.split('@')[0]}` : null,
   photoURL: data.photoURL || null,
 });
 
@@ -84,7 +86,7 @@ export const listDiscoverableUsers = async ({ uid, search = '', limit = 20 }) =>
     .slice(0, safeLimit);
 };
 
-export const listRelationships = async (uid, status) => {
+export const listRelationships = async (uid, status, search = '') => {
   const query =
     status === 'pending'
       ? db
@@ -104,6 +106,8 @@ export const listRelationships = async (uid, status) => {
     ),
   );
 
+  const normalizedSearch = search.trim().toLowerCase();
+
   return relationships
     .map((relationship, index) => {
       const user = users[index];
@@ -111,7 +115,13 @@ export const listRelationships = async (uid, status) => {
         ? { ...publicUser(user), relationshipStatus: status, relationship }
         : null;
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((user) => {
+      if (!normalizedSearch) return true;
+      return `${user.name || ''} ${user.email || ''} ${user.username || ''}`
+        .toLowerCase()
+        .includes(normalizedSearch);
+    });
 };
 
 export const sendRequest = async (requesterId, recipientId) => {

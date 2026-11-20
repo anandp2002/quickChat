@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Search, UserRoundPlus } from 'lucide-react';
+import {
+  RefreshCw,
+  Search,
+  UserRoundPlus,
+  UsersRound,
+  UserCheck,
+} from 'lucide-react';
 import { friendService } from '@/services/friendService';
 import { FriendRow } from '@/components/friends/FriendRow';
 import { FriendsTabs } from '@/components/friends/FriendsTabs';
@@ -14,7 +20,10 @@ const tabCopy = {
     title: 'Friend requests',
     empty: 'You do not have any pending requests.',
   },
-  discover: { title: 'People you may know' },
+  discover: {
+    title: 'People you may know',
+    empty: 'No people to show right now.',
+  },
 };
 
 export function FriendsPanel() {
@@ -25,6 +34,7 @@ export function FriendsPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pendingAction, setPendingAction] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -46,34 +56,53 @@ export function FriendsPanel() {
     let active = true;
     const timer = setTimeout(
       async () => {
-        setLoading(true);
         setError('');
         try {
           const response =
             activeTab === 'discover'
               ? await friendService.discover({ search: query })
               : activeTab === 'friends'
-                ? await friendService.list()
-                : await friendService.listRequests();
+                ? await friendService.list({ search: query })
+                : await friendService.listRequests({ search: query });
 
           if (!active) return;
           const items = response.friends || response.requests || [];
           setFriends(items);
-          if (activeTab === 'requests') setRequestCount(items.length);
+          if (activeTab === 'requests' && !query) setRequestCount(items.length);
         } catch (requestError) {
           if (active) setError(requestError.message);
         } finally {
           if (active) setLoading(false);
         }
       },
-      activeTab === 'discover' ? 250 : 0,
+      250,
     );
 
     return () => {
       active = false;
       clearTimeout(timer);
     };
-  }, [activeTab, query]);
+  }, [activeTab, query, refreshKey]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setFriends([]);
+    setLoading(true);
+    setError('');
+  };
+
+  const handleQueryChange = (event) => {
+    setQuery(event.target.value);
+    setLoading(true);
+    setError('');
+  };
+
+  const handleRefresh = () => {
+    setFriends([]);
+    setLoading(true);
+    setError('');
+    setRefreshKey((current) => current + 1);
+  };
 
   const handleSendRequest = async (userId) => {
     setPendingAction(userId);
@@ -135,23 +164,31 @@ export function FriendsPanel() {
               Discover people and manage your connections.
             </p>
           </div>
-          <UserRoundPlus
-            className="mt-1 text-[#4a9271]"
-            size={20}
-            aria-hidden="true"
-          />
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={loading}
+            className="mt-0 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#dce6e0] text-[#4a9271] transition-colors hover:bg-[#edf5f1] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#73c49e] disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Refresh friends"
+            title="Refresh friends"
+          >
+            <RefreshCw
+              size={17}
+              aria-hidden="true"
+              className={loading ? 'animate-spin' : ''}
+            />
+          </button>
         </div>
         <div className="mt-5">
           <FriendsTabs
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={handleTabChange}
             requestCount={requestCount}
           />
         </div>
       </header>
 
-      {activeTab === 'discover' ? (
-        <div className="relative mt-5">
+      <div className="relative mt-5">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#77827e]"
             size={17}
@@ -160,13 +197,24 @@ export function FriendsPanel() {
           <input
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search people by name or email..."
-            aria-label="Search people by name or email"
+            onChange={handleQueryChange}
+            placeholder={
+              activeTab === 'friends'
+                ? 'Search friends by name or email...'
+                : activeTab === 'requests'
+                  ? 'Search requests by name or email...'
+                  : 'Search people by name or email...'
+            }
+            aria-label={
+              activeTab === 'friends'
+                ? 'Search friends by name or email'
+                : activeTab === 'requests'
+                  ? 'Search requests by name or email'
+                  : 'Search people by name or email'
+            }
             className="h-11 w-full rounded-[9px] border border-[#dce6e0] bg-[#f8faf8] px-10 font-sans text-[0.8rem] text-[#253a33] outline-none placeholder:text-[#89968f] focus:border-[#4a9271]"
           />
         </div>
-      ) : null}
 
       <div className="mt-6">
         <h2 className="m-0 font-sans text-[0.92rem] font-semibold text-[#263a33]">
@@ -218,11 +266,35 @@ export function FriendsPanel() {
             })}
           </ul>
         ) : (
-          <p className="mt-3 font-sans text-[0.8rem] leading-6 text-[#667772]">
-            {activeTab === 'discover' && query
-              ? 'No people match your search.'
-              : copy.empty}
-          </p>
+          <div className="mt-3 flex min-h-32 flex-col items-center justify-center rounded-[12px] border border-dashed border-[#dce6e0] bg-[#fafcfb] px-5 py-6 text-center">
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-[#edf5f1] text-[#4a9271]">
+              {activeTab === 'friends' ? (
+                <UsersRound size={18} aria-hidden="true" />
+              ) : activeTab === 'requests' ? (
+                <UserCheck size={18} aria-hidden="true" />
+              ) : (
+                <UserRoundPlus size={18} aria-hidden="true" />
+              )}
+            </span>
+            <p className="m-0 mt-3 font-sans text-[0.82rem] font-semibold text-[#263a33]">
+              {query
+                ? activeTab === 'friends'
+                  ? 'No friends match your search.'
+                  : activeTab === 'requests'
+                    ? 'No requests match your search.'
+                    : 'No people match your search.'
+                : copy.empty}
+            </p>
+            <p className="m-0 mt-1 font-sans text-[0.74rem] leading-5 text-[#77827e]">
+              {query
+                ? 'Try a different name or email address.'
+                : activeTab === 'discover'
+                  ? 'Check back later to find new people.'
+                : activeTab === 'friends'
+                  ? 'Send a friend request to someone you would like to connect with.'
+                  : 'New friend requests will appear here.'}
+            </p>
+          </div>
         )}
       </div>
     </section>

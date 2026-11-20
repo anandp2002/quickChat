@@ -22,7 +22,11 @@ export const discover = async (req, res) => {
 
 export const listFriends = async (req, res) => {
   try {
-    const friends = await friendService.listRelationships(req.user.uid, 'accepted');
+    const friends = await friendService.listRelationships(
+      req.user.uid,
+      'accepted',
+      req.query.search,
+    );
     return res.json({ friends });
   } catch (error) {
     return handleError(res, error, 'Failed to fetch friends.');
@@ -31,7 +35,11 @@ export const listFriends = async (req, res) => {
 
 export const listRequests = async (req, res) => {
   try {
-    const requests = await friendService.listRelationships(req.user.uid, 'pending');
+    const requests = await friendService.listRelationships(
+      req.user.uid,
+      'pending',
+      req.query.search,
+    );
     return res.json({ requests });
   } catch (error) {
     return handleError(res, error, 'Failed to fetch friend requests.');
