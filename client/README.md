@@ -1,40 +1,14 @@
-# QuickChat
+# QuickChat Client
 
-QuickChat is a MERN chat application with Firebase authentication, a React/Vite client, and an Express API server. The client currently provides email/password and Google authentication, protected routes, a responsive expandable sidebar, and placeholder Home and Chat views.
-
-## Project Structure
-
-```text
-quickChat/
-|-- client/                 React + Vite frontend
-|   |-- src/
-|       |-- components/     Auth, UI, and sidebar components
-|       |-- config/         Firebase and navigation configuration
-|       |-- layouts/        AuthLayout and MainLayout
-|       |-- pages/          Auth, Home, and Chat pages
-|       |-- routes/         Routes and public/protected guards
-|       |-- services/       API and authentication services
-|       |-- store/          Redux auth state and Firebase listener
-|-- server/                 Express + Firebase Admin backend
-|   |-- src/
-|       |-- config/         Firebase Admin initialization
-|       |-- controllers/    Request handlers
-|       |-- middlewares/    Firebase token verification
-|       |-- routes/         API route definitions
-|   |-- server.js
-|   |-- serviceAccountKey.json
-```
+The QuickChat client is a React 19 and Vite application. It uses Firebase Authentication, Redux Toolkit for authentication state, React Router for navigation, Tailwind CSS 4 for styling, Socket.IO for real-time chat events, and the existing Express API for REST operations.
 
 ## Requirements
 
 - Node.js 18 or newer
-- A Firebase project
-- Firebase Authentication enabled with Email/Password and Google providers
-- A Firebase Admin service account key for the server
+- A running QuickChat server
+- A Firebase Web application configuration
 
-## Configuration
-
-### Client
+## Environment configuration
 
 Create `client/.env`:
 
@@ -43,108 +17,85 @@ VITE_FIREBASE_API_KEY=your_firebase_api_key
 VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=your_project_id
 VITE_API_URL=http://localhost:5000
+VITE_SOCKET_URL=http://localhost:5000
 ```
 
-`VITE_API_URL` is optional and defaults to `http://localhost:5000`.
+`VITE_API_URL` defaults to `http://localhost:5000`.
 
-### Server
-
-Place the Firebase Admin private key at:
-
-```text
-server/serviceAccountKey.json
-```
-
-Create `server/.env` when using Firebase Storage:
-
-```env
-PORT=5000
-FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
-```
-
-The service account file contains private credentials. Never expose it in the client or commit it to a public repository.
+`VITE_SOCKET_URL` defaults to `VITE_API_URL`, then `http://localhost:5000`.
 
 ## Installation
 
-Install dependencies in both packages:
-
 ```bash
-cd client
-npm install
-
-cd ../server
 npm install
 ```
 
-## Development
-
-Start the API server in one terminal:
+## Commands
 
 ```bash
-cd server
-npm run dev
-```
-
-Start the Vite client in another terminal:
-
-```bash
-cd client
-npm run dev
-```
-
-The client is normally available at `http://localhost:5173` and the API at `http://localhost:5000`.
-
-## Available Scripts
-
-### Client
-
-```bash
-npm run dev       # Start the Vite development server
+npm run dev       # Start Vite development server
 npm run build     # Create a production build
 npm run lint      # Run ESLint
 npm run preview   # Preview the production build
 ```
 
-### Server
+## Application routes
 
-```bash
-npm run dev       # Start Express with Node watch mode
-npm start         # Start Express normally
+| Route | Access | Feature |
+| --- | --- | --- |
+| `/login` | Public only | Email/password and Google sign-in |
+| `/signup` | Public only | Account creation and Google sign-up |
+| `/` | Protected | Home dashboard |
+| `/friends` | Protected | Friend discovery and request management |
+| `/chat` | Protected | Direct text conversations |
+
+## Source structure
+
+```text
+src/
+├── components/
+│   ├── auth/          Authentication cards and controls
+│   ├── chat/          Chat sidebar and conversation UI
+│   ├── friends/       Friend tabs and actions
+│   ├── layout/        Layout support components
+│   ├── sidebar/       Main responsive sidebar
+│   └── ui/            Shared form and modal components
+├── config/            Firebase and navigation configuration
+├── layouts/           Public and authenticated layouts
+├── pages/             Route-level pages
+├── routes/            Route guards and route definitions
+├── services/          REST and Socket.IO clients
+└── store/             Redux authentication state
 ```
 
-## Routing
+## Authentication state
 
-Routes are centralized in `client/src/routes/routePaths.js`.
+`AuthListener` subscribes to Firebase `onAuthStateChanged` and stores a serializable subset of the Firebase user in Redux:
 
-| Route     | Access    | Page   |
-| --------- | --------- | ------ |
-| `/login`  | Public    | Login  |
-| `/signup` | Public    | Signup |
-| `/`       | Protected | Home   |
-| `/chat`   | Protected | Chat   |
+- `uid`
+- `email`
+- `displayName`
+- `photoURL`
 
-`PublicRoute` redirects authenticated users to `/`. `ProtectedRoute` redirects unauthenticated users to `/login`. Firebase session changes are synchronized into Redux by `AuthListener`.
+REST requests obtain a fresh Firebase ID token from `auth.currentUser` through `apiClient`.
 
-## Adding Sidebar Items
+## Chat integration
 
-Add new authenticated navigation items in `client/src/config/navigation.js`:
+The chat flow is:
 
-```js
-{
-  label: 'Settings',
-  path: '/settings',
-  icon: 'settings',
-}
-```
+1. Select an accepted friend.
+2. Open or create a direct conversation through `POST /api/conversations/direct/:friendId`.
+3. Load message history through REST.
+4. Connect to Socket.IO with a Firebase ID token.
+5. Join the conversation room.
+6. Send messages through `message:send`.
+7. Display `message:new` events and typing updates.
 
-Then register the matching icon in `client/src/components/sidebar/NavigationIcon.jsx` and add the protected route in `AppRoutes.jsx`.
+Socket.IO events use generated `clientId` values for optimistic UI updates and duplicate protection.
 
-## API Endpoints
+## Development notes
 
-All auth API requests require a Firebase ID token in the `Authorization` header.
-
-| Method | Endpoint             | Purpose                         |
-| ------ | -------------------- | ------------------------------- |
-| `GET`  | `/`                  | Server health check             |
-| `POST` | `/api/auth/register` | Create or update a user profile |
-| `GET`  | `/api/auth/me`       | Get the current user profile    |
+- Use `@/` imports for source files; the alias is configured in `vite.config.js`.
+- Keep UI state separate from server-owned Firestore state.
+- Do not expose the Firebase service-account key in the client.
+- Run `npm run lint` and `npm run build` before submitting changes.

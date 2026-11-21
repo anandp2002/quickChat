@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { friendService } from '@/services/friendService';
+import { chatService } from '@/services/chatService';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { ChatConversation } from '@/components/chat/ChatConversation';
 
@@ -9,6 +10,8 @@ export function ChatPage() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [conversation, setConversation] = useState(null);
+  const [openingChat, setOpeningChat] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -31,6 +34,26 @@ export function ChatPage() {
     };
   }, [query]);
 
+  const openConversation = async (friend) => {
+    setSelectedFriend(friend);
+    setConversation(null);
+    setOpeningChat(true);
+    setError('');
+    try {
+      const response = await chatService.openDirect(friend.id);
+      setConversation(response.conversation);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setOpeningChat(false);
+    }
+  };
+
+  const closeConversation = () => {
+    setSelectedFriend(null);
+    setConversation(null);
+  };
+
   return (
     <div className="flex h-full w-full overflow-hidden bg-surface">
       <ChatSidebar
@@ -40,11 +63,15 @@ export function ChatPage() {
         loading={loading}
         error={error}
         onQueryChange={setQuery}
-        onSelectFriend={setSelectedFriend}
+        onSelectFriend={openConversation}
       />
       <ChatConversation
+        key={selectedFriend?.id || 'no-chat'}
         friend={selectedFriend}
-        onClose={() => setSelectedFriend(null)}
+        conversation={conversation}
+        loading={openingChat}
+        error={error}
+        onClose={closeConversation}
       />
     </div>
   );
