@@ -5,7 +5,7 @@ import {
   Send,
   Video,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { ChatAvatar } from '@/components/chat/ChatAvatar';
 import { chatService } from '@/services/chatService';
@@ -24,11 +24,14 @@ export function ChatConversation({
   const [text, setText] = useState('');
   const [sendError, setSendError] = useState('');
   const [typing, setTyping] = useState(false);
-  const messagesEndRef = useRef(null);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const messageScrollRef = useRef(null);
+  const initialScrollDoneRef = useRef(false);
   const typingTimerRef = useRef(null);
 
   useEffect(() => {
     if (!conversation) return undefined;
+    initialScrollDoneRef.current = false;
 
     let active = true;
     let chatSocket;
@@ -61,10 +64,16 @@ export function ChatConversation({
         const response = await chatService.listMessages({
           conversationId: conversation.id,
         });
-        if (active) setMessages(response.messages || []);
+        if (active) {
+          setMessages(response.messages || []);
+          setHistoryLoading(false);
+        }
         await chatService.markRead(conversation.id);
       } catch (requestError) {
-        if (active) setSendError(requestError.message);
+        if (active) {
+          setSendError(requestError.message);
+          setHistoryLoading(false);
+        }
       }
     };
 
@@ -104,9 +113,39 @@ export function ChatConversation({
     };
   }, [conversation, uid]);
 
+  useLayoutEffect(() => {
+    const container = messageScrollRef.current;
+    if (!container || historyLoading) return;
+
+    if (!initialScrollDoneRef.current) {
+      container.scrollTop = container.scrollHeight;
+      initialScrollDoneRef.current = true;
+      return;
+    }
+
+    const distanceFromBottom =
+      container.scrollHeight -
+      container.scrollTop -
+      container.clientHeight;
+
+    if (distanceFromBottom < 120) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    }
+  }, [messages, historyLoading]);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, typing]);
+    const container = messageScrollRef.current;
+    if (!container || !typing) return;
+
+    const distanceFromBottom =
+      container.scrollHeight -
+      container.scrollTop -
+      container.clientHeight;
+
+    if (distanceFromBottom < 120) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    }
+  }, [typing]);
 
   useEffect(() => () => clearTimeout(typingTimerRef.current), []);
 
@@ -229,8 +268,11 @@ export function ChatConversation({
             </div>
           </header>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-            {loading ? (
+          <div
+            ref={messageScrollRef}
+            className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6"
+          >
+            {loading || historyLoading ? (
               <div className="grid h-full place-items-center font-sans text-[0.82rem] text-text-muted">
                 Opening conversation...
               </div>
@@ -272,7 +314,6 @@ export function ChatConversation({
                     </div>
                   </div>
                 )}
-                <div ref={messagesEndRef} />
               </div>
             )}
           </div>

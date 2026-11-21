@@ -144,6 +144,8 @@ Typing events are temporary Socket.IO events and are not persisted to Firestore.
 
 When a conversation is opened or a new message is received, the client calls the read endpoint. The server resets the unread count for the current member only.
 
+When a conversation opens, the message container starts at `scrollTop = scrollHeight`, so the latest message is visible immediately without smooth scrolling through earlier history. Later messages scroll smoothly only when the reader is already near the bottom; reading an older section is preserved.
+
 When the opposite user sends `typing:start`, the conversation UI shows an animated three-dot pulse in a small incoming-message bubble directly after the latest message in the scrollable message list. `typing:stop` removes the pulse and it is also hidden when a user leaves or refreshes the chat state.
 
 ## Presence
