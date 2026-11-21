@@ -263,6 +263,15 @@ export function ChatConversation({
                     </div>
                   );
                 })}
+                {typing && (
+                  <div className="flex justify-start" role="status" aria-label={`${friend.name} is typing`}>
+                    <div className="flex h-9 items-center gap-1.5 rounded-2xl rounded-bl-sm border border-border-subtle bg-surface px-3 shadow-sm">
+                      <span className="typing-dot" />
+                      <span className="typing-dot" />
+                      <span className="typing-dot" />
+                    </div>
+                  </div>
+                )}
                 <div ref={messagesEndRef} />
               </div>
             )}
