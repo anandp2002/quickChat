@@ -13,6 +13,7 @@ import { getChatSocket } from '@/services/socketService';
 
 export function ChatConversation({
   friend,
+  presence,
   conversation,
   loading,
   error,
@@ -211,7 +212,11 @@ export function ChatConversation({
                 {friend.name}
               </p>
               <p className="m-0 mt-0.5 truncate font-sans text-[0.72rem] text-text-muted">
-                {typing ? 'Typing...' : friend.username || 'Available'}
+                {typing
+                  ? 'Typing...'
+                  : presence?.online
+                    ? 'Online'
+                    : friend.username || 'Available'}
               </p>
             </div>
             <div className="flex items-center gap-1">

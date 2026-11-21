@@ -4,6 +4,7 @@ import { ChatAvatar } from '@/components/chat/ChatAvatar';
 
 export function ChatSidebar({
   friends,
+  presenceByUid = {},
   selectedFriend,
   query,
   loading,
@@ -66,7 +67,16 @@ export function ChatSidebar({
                   }`}
                   aria-current={selectedFriend?.id === friend.id ? 'true' : undefined}
                 >
-                  <ChatAvatar friend={friend} />
+                  <span className="relative shrink-0">
+                    <ChatAvatar friend={friend} />
+                    {presenceByUid[friend.id]?.online && (
+                      <span
+                        className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-surface bg-emerald-500"
+                        aria-label={`${friend.name} is online`}
+                        title="Online"
+                      />
+                    )}
+                  </span>
                   <span className="min-w-0 flex-1 border-b border-border-divider py-1">
                     <span className="block truncate font-sans text-[0.92rem] font-semibold text-text-primary">
                       {friend.name}

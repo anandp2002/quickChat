@@ -144,6 +144,26 @@ Typing events are temporary Socket.IO events and are not persisted to Firestore.
 
 When a conversation is opened or a new message is received, the client calls the read endpoint. The server resets the unread count for the current member only.
 
+## Presence
+
+Socket.IO tracks presence for active connections:
+
+- Each UID has a set of active socket IDs.
+- Multiple tabs or devices count as separate connections.
+- The first connection broadcasts `presence:online`.
+- The final disconnect broadcasts `presence:offline`.
+- The `users/{uid}.presence` field stores `online` and `lastSeen`.
+
+Presence events:
+
+| Event | Direction | Payload |
+| --- | --- | --- |
+| `presence:subscribe` | Client to server | Ack callback receives friend presence states |
+| `presence:online` | Server to friends | `{ uid }` |
+| `presence:offline` | Server to friends | `{ uid, lastSeen }` |
+
+The chat list renders online friends with a green indicator. Opening a chat uses the same state to show `Online` in the conversation header.
+
 ## Future media model
 
 Messages already include `type` and `attachment` fields. Future voice, image, video, and document messages can use:
